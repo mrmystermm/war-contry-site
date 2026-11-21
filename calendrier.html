@@ -9,7 +9,11 @@
 <div class="modal" id="modal"><div class="box"><h2 id="modalTitle">Ouvrir la case 🎁</h2><p id="modalText"></p><input id="pseudo" maxlength="32" placeholder="Ton pseudo Minecraft"><div class="actions"><button class="primary" id="confirm">Valider</button><button class="secondary" id="cancel">Annuler</button></div><div id="result"></div></div></div>
 <script src="snow.js"></script>
 <script>
-const year=2026,month=11,storageKey='warcontry_advent_claims_2026';
+const TEST_MODE=true;
+const year=2026,month=11;
+const storageKey=TEST_MODE
+  ? 'warcontry_advent_claims_2026_TEST'
+  : 'warcontry_advent_claims_2026';
 const API_URL='https://warcontry-noel.mr-mystermm.workers.dev/claim';
 const $=id=>document.getElementById(id),calendar=$('calendar'),modal=$('modal');
 const now=new Date(),localToday=new Date(now.getFullYear(),now.getMonth(),now.getDate());
@@ -21,7 +25,11 @@ let claims={};try{claims=JSON.parse(localStorage.getItem(storageKey)||'{}')}catc
 let selectedDay=null;
 for(let day=1;day<=24;day++){
  const d=new Date(year,month,day),tile=document.createElement('button');tile.type='button';tile.className='tile';
- const claimed=!!claims[day],past=localToday>d,future=localToday<d,isToday=+d===+localToday;
+const testDay=TEST_MODE && day===1;
+const claimed=!!claims[day],
+past=!testDay && localToday>d,
+future=!testDay && localToday<d,
+isToday=+d===+localToday || testDay;
  let icon='🎁',hint='Ouvrir aujourd’hui';
  if(claimed){tile.classList.add('open');icon='🎉';hint='Ouverte';tile.disabled=true}
  else if(past){tile.classList.add('missed');icon='🔒';hint='Manquée';tile.disabled=true}
@@ -35,7 +43,10 @@ $('cancel').onclick=()=>modal.classList.remove('show');
 $('confirm').onclick=async()=>{
  const pseudo=$('pseudo').value.trim();
  if(!pseudo){$('result').innerHTML='<span class="reveal">Entre un pseudo pour continuer.</span>';return}
- if(pseudo.length>32){$('result').innerHTML='<span class="reveal">Ton pseudo ne doit pas dépasser 32 caractères.</span>';return}
+ if(!/^[A-Za-z0-9_]{3,16}$/.test(pseudo)){
+  $('result').textContent='Le pseudo doit contenir entre 3 et 16 lettres, chiffres ou underscores.';
+  return;
+}
  $('confirm').disabled=true;$('pseudo').disabled=true;
  $('result').textContent='Envoi de ta demande…';
  try{
