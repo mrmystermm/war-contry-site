@@ -1,0 +1,54 @@
+<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>War Contry — Calendrier de l'Avent 2026</title><meta name="description" content="Ouvre une case par jour du 1er au 24 décembre 2026 sur War Contry."><meta name="theme-color" content="#060d1a"><link rel="icon" href="assets/favicon.png"><meta property="og:image" content="assets/banniere-war-contry.png"><link rel="stylesheet" href="style.css"></head><body>
+<div class="cal-bg"></div>
+<nav class="nav"><div class="nav-in"><a class="brand" href="index.html"><img src="assets/favicon.png" alt=""><span>WAR CONTRY</span></a><div class="links"><a href="index.html">Événement de Noël</a><a href="calendrier.html" class="cta on">🎁 Calendrier de l'Avent</a></div></div></nav>
+<header class="page-head"><span class="eyebrow">❄ Noël 2026</span><h1>Calendrier de l'Avent</h1><p>Une case par jour. Des surprises t'attendent…</p><div class="date" id="dateLabel"></div></header>
+<main><div class="grid" id="calendar"></div>
+<p class="note">Une case passée ne peut pas être ouverte plus tard. Les cases futures restent verrouillées.</p>
+</main>
+<footer><b>WAR CONTRY</b><br>Événement de Noël 2026</footer>
+<div class="modal" id="modal"><div class="box"><h2 id="modalTitle">Ouvrir la case 🎁</h2><p id="modalText"></p><input id="pseudo" maxlength="32" placeholder="Ton pseudo Minecraft"><div class="actions"><button class="primary" id="confirm">Valider</button><button class="secondary" id="cancel">Annuler</button></div><div id="result"></div></div></div>
+<script src="snow.js"></script>
+<script>
+const year=2026,month=11,storageKey='warcontry_advent_claims_2026';
+const API_URL='https://api.play-warcontry.com/claim.php';
+const $=id=>document.getElementById(id),calendar=$('calendar'),modal=$('modal');
+const now=new Date(),localToday=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+const start=new Date(year,month,1),end=new Date(year,month,24);
+if(localToday<start)$('dateLabel').textContent='Ouverture le 1er décembre 2026';
+else if(localToday>end)$('dateLabel').textContent='Calendrier terminé — merci !';
+else $('dateLabel').textContent='Aujourd’hui : '+localToday.toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
+let claims={};try{claims=JSON.parse(localStorage.getItem(storageKey)||'{}')}catch(e){}
+let selectedDay=null;
+for(let day=1;day<=24;day++){
+ const d=new Date(year,month,day),tile=document.createElement('button');tile.type='button';tile.className='tile';
+ const claimed=!!claims[day],past=localToday>d,future=localToday<d,isToday=+d===+localToday;
+ let icon='🎁',hint='Ouvrir aujourd’hui';
+ if(claimed){tile.classList.add('open');icon='🎉';hint='Ouverte';tile.disabled=true}
+ else if(past){tile.classList.add('missed');icon='🔒';hint='Manquée';tile.disabled=true}
+ else if(future){icon='🔒';hint='Pas encore';tile.disabled=true}
+ else tile.classList.add('today');
+ tile.innerHTML='<span class="num">'+String(day).padStart(2,'0')+'</span><span class="gift">'+icon+'</span><span class="hint">'+hint+'</span>';
+ if(isToday&&!claimed)tile.onclick=()=>openModal(day);
+ calendar.appendChild(tile)}
+function openModal(day){selectedDay=day;$('modalTitle').textContent='Case '+day+' 🎁';$('modalText').textContent='Entre ton pseudo Minecraft pour réclamer la récompense du jour.';$('pseudo').value='';$('pseudo').disabled=false;$('confirm').disabled=false;$('result').textContent='';modal.classList.add('show')}
+$('cancel').onclick=()=>modal.classList.remove('show');
+$('confirm').onclick=async()=>{
+ const pseudo=$('pseudo').value.trim();
+ if(!pseudo){$('result').innerHTML='<span class="reveal">Entre un pseudo pour continuer.</span>';return}
+ if(pseudo.length>32){$('result').innerHTML='<span class="reveal">Ton pseudo ne doit pas dépasser 32 caractères.</span>';return}
+ $('confirm').disabled=true;$('pseudo').disabled=true;
+ $('result').textContent='Envoi de ta demande…';
+ try{
+  const response=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({day:selectedDay,pseudo})});
+  const data=await response.json();
+  if(!response.ok) throw new Error(data.message||'Impossible d’enregistrer la demande.');
+  claims[selectedDay]=true;try{localStorage.setItem(storageKey,JSON.stringify(claims))}catch(e){}
+  $('modalText').textContent='Case validée !';
+  $('result').innerHTML='<span class="reveal">🎅 Ta demande a bien été envoyée en privé à l’organisateur. Bonne chance !</span>';
+  setTimeout(()=>location.reload(),2200);
+ }catch(error){
+  $('result').textContent=error.message||'Erreur de connexion. Réessaie dans un instant.';
+  $('confirm').disabled=false;$('pseudo').disabled=false;
+ }
+};
+</script></body></html>

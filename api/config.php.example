@@ -1,0 +1,23 @@
+<?php
+// Copie ce fichier sous le nom config.php et remplace les valeurs.
+// Ne publie JAMAIS ce fichier avec tes vrais identifiants dans un dépôt public.
+const DB_HOST = 'localhost';
+const DB_NAME = 'NOM_DE_TA_BASE';
+const DB_USER = 'UTILISATEUR_MYSQL';
+const DB_PASS = 'MOT_DE_PASSE_MYSQL';
+
+// Génère le hash du mot de passe admin avec :
+// php -r "echo password_hash('TON_MOT_DE_PASSE_LONG', PASSWORD_DEFAULT), PHP_EOL;"
+const ADMIN_PASSWORD_HASH = 'COLLE_ICI_LE_HASH_GENERE';
+
+function db(): PDO {
+    static $pdo = null;
+    if ($pdo instanceof PDO) return $pdo;
+    $pdo = new PDO(
+        'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4',
+        DB_USER,
+        DB_PASS,
+        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]
+    );
+    return $pdo;
+}
