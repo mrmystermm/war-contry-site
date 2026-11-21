@@ -10,7 +10,7 @@
 <script src="snow.js"></script>
 <script>
 const year=2026,month=11,storageKey='warcontry_advent_claims_2026';
-const API_URL='https://api.play-warcontry.com/claim.php';
+const API_URL='https://warcontry-noel.mr-mystermm.workers.dev/claim';
 const $=id=>document.getElementById(id),calendar=$('calendar'),modal=$('modal');
 const now=new Date(),localToday=new Date(now.getFullYear(),now.getMonth(),now.getDate());
 const start=new Date(year,month,1),end=new Date(year,month,24);
@@ -39,12 +39,20 @@ $('confirm').onclick=async()=>{
  $('confirm').disabled=true;$('pseudo').disabled=true;
  $('result').textContent='Envoi de ta demande…';
  try{
-  const response=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({day:selectedDay,pseudo})});
+  const response=await fetch(API_URL,{
+  method:'POST',
+  headers:{'Content-Type':'application/json'},
+  body:JSON.stringify({
+    year:2026,
+    day:selectedDay,
+    pseudo
+  })
+});
   const data=await response.json();
-  if(!response.ok) throw new Error(data.message||'Impossible d’enregistrer la demande.');
+  if(!response.ok) throw new Error(data.error||data.message||'Impossible d’enregistrer la demande.');
   claims[selectedDay]=true;try{localStorage.setItem(storageKey,JSON.stringify(claims))}catch(e){}
   $('modalText').textContent='Case validée !';
-  $('result').innerHTML='<span class="reveal">🎅 Ta demande a bien été envoyée en privé à l’organisateur. Bonne chance !</span>';
+  $('result').innerHTML='<span class="reveal">🎅 Ta réclamation a bien été enregistrée. Merci !</span>';
   setTimeout(()=>location.reload(),2200);
  }catch(error){
   $('result').textContent=error.message||'Erreur de connexion. Réessaie dans un instant.';
