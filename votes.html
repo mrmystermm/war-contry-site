@@ -1,25 +1,90 @@
 <!DOCTYPE html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>War Contry — Votes</title><meta name="description" content="Vote pour War Contry et soutiens le serveur."><meta name="theme-color" content="#060d1a"><link rel="icon" href="assets/favicon.png"><link rel="stylesheet" href="style.css">
+<html lang="fr">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>War Contry — Votes</title><meta name="description" content="Vote pour War Contry et soutiens le serveur.">
+<meta name="theme-color" content="#060d1a"><link rel="icon" href="assets/favicon.png"><link rel="stylesheet" href="style.css">
 <style>
 .vote-intro{max-width:850px;margin:28px auto 0;padding:0 20px;text-align:center}.vote-intro p{color:var(--muted)}
 .vote-sites{max-width:1120px;margin:34px auto 0;padding:0 20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:18px}
 .vote-site,.vote-panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px}.vote-site h2,.vote-panel h2{font-family:var(--serif);color:var(--gold);margin:0 0 8px;font-size:23px}
-.vote-site p{color:#cbd5e3;min-height:48px;font-size:14px}.vote-status{font-size:13px;color:var(--muted);margin:14px 0}
-.vote-link{display:inline-block;padding:10px 16px;border-radius:9px;background:linear-gradient(180deg,#f7d27f,var(--gold2));color:#241a06;text-decoration:none;font-weight:700}
+.vote-site p{color:#cbd5e3;min-height:48px;font-size:14px}.vote-status{font-size:13px;color:var(--muted);margin:14px 0;min-height:20px}
+.vote-link,.vote-action{display:inline-block;padding:10px 16px;border:0;border-radius:9px;background:linear-gradient(180deg,#f7d27f,var(--gold2));color:#241a06;text-decoration:none;font-weight:700;cursor:pointer;font:inherit;font-size:14px}
 .vote-panels{max-width:1120px;margin:24px auto 0;padding:0 20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
 .vote-panel p{color:#cbd5e3;font-size:14px}.vote-note{max-width:1080px;margin:22px auto;padding:16px 20px;border:1px solid var(--line);border-radius:12px;color:var(--muted);font-size:13px}
-</style></head><body><div class="cal-bg"></div>
+.vote-form{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}.vote-form input{flex:1;min-width:140px;padding:10px;border-radius:8px;border:1px solid var(--line);background:#0a1422;color:#fff}
+.vote-result{font-size:13px;color:#e8d7ae;margin-top:12px;line-height:1.5}.vote-site .vote-action:disabled{opacity:.55;cursor:not-allowed}
+</style></head>
+<body><div class="cal-bg"></div>
 <nav class="nav"><div class="nav-in"><a class="brand" href="index.html"><img src="assets/favicon.png" alt=""><span>WAR CONTRY</span></a><div class="links"><a href="index.html">Événement de Noël</a><a href="calendrier.html">🎁 Calendrier de l'Avent</a><a href="votes.html" class="cta on">🗳️ Votes</a></div></div></nav>
-<header class="page-head"><span class="eyebrow">⚔ Soutiens War Contry</span><h1>Votes &amp; récompenses</h1><p>Vote sur les plateformes partenaires pour soutenir le serveur et gagner des récompenses.</p></header>
-<section class="vote-intro"><p>Chaque plateforme possède son propre délai. Le temps restant sera affiché séparément dès que la validation partenaire sera connectée.</p></section>
-<main><section class="vote-sites" aria-label="Sites de vote">
-<article class="vote-site"><h2>Planet Minecraft</h2><p>Soutiens War Contry sur Planet Minecraft.</p><div class="vote-status">Délai : à récupérer auprès du partenaire</div><a class="vote-link" href="https://www.planetminecraft.com/server/war-contry/vote/" target="_blank" rel="noopener noreferrer">Ouvrir le vote ↗</a></article>
-<article class="vote-site"><h2>Serveur Minecraft</h2><p>Ajoute ton vote sur la liste Serveur Minecraft.</p><div class="vote-status">Délai : à récupérer auprès du partenaire</div><a class="vote-link" href="https://serveur-minecraft.com/6077" target="_blank" rel="noopener noreferrer">Ouvrir le vote ↗</a></article>
-<article class="vote-site"><h2>Minecraft IP List</h2><p>Retrouve War Contry dans la liste Minecraft IP List.</p><div class="vote-status">Délai : à récupérer auprès du partenaire</div><a class="vote-link" href="https://www.minecraftiplist.com/server/WarContry-45835" target="_blank" rel="noopener noreferrer">Ouvrir le vote ↗</a></article>
-<article class="vote-site"><h2>Serveur Privé</h2><p>Vote et consulte les statistiques disponibles via leur API.</p><div class="vote-status">API partenaire à connecter</div><a class="vote-link" href="https://serveur-prive.net/minecraft/war-contry" target="_blank" rel="noopener noreferrer">Ouvrir le vote ↗</a></article>
+<header class="page-head"><span class="eyebrow">✦ Soutiens War Contry</span><h1>Votes &amp; récompenses</h1><p>Vote sur les plateformes partenaires pour soutenir le serveur.</p></header>
+<section class="vote-intro"><p>Chaque plateforme possède son propre délai. Un vote n'est comptabilisé qu'après confirmation par la plateforme.</p></section>
+<main>
+<section class="vote-sites" aria-label="Sites de vote">
+<article class="vote-site"><h2>Planet Minecraft</h2><p>Soutiens War Contry sur Planet Minecraft.</p><div class="vote-status">Intégration à venir — délai indépendant.</div><a class="vote-link" href="https://www.planetminecraft.com/server/war-contry/vote/" target="_blank" rel="noopener noreferrer">Ouvrir le vote ↗</a></article>
+<article class="vote-site"><h2>Serveur Minecraft</h2><p>Ajoute ton vote sur la liste Serveur Minecraft.</p><div class="vote-status">Intégration à venir — délai indépendant.</div><a class="vote-link" href="https://serveur-minecraft.com/6077" target="_blank" rel="noopener noreferrer">Ouvrir le vote ↗</a></article>
+<article class="vote-site"><h2>Minecraft IP List</h2><p>Retrouve War Contry dans la liste Minecraft IP List.</p><div class="vote-status">Intégration à venir — délai indépendant.</div><a class="vote-link" href="https://www.minecraftiplist.com/server/WarContry-45835" target="_blank" rel="noopener noreferrer">Ouvrir le vote ↗</a></article>
+<article class="vote-site" id="serveur-prive">
+<h2>Serveur Privé</h2><p>Entre ton pseudo Minecraft, puis utilise le bouton pour générer un lien de vote sécurisé.</p>
+<form class="vote-form" id="sp-form"><input id="sp-pseudo" maxlength="16" minlength="3" autocomplete="off" placeholder="Pseudo Minecraft" required><button class="vote-action" id="sp-start" type="submit">Préparer mon vote</button></form>
+<div class="vote-status" id="sp-status" aria-live="polite">En attente de ton pseudo.</div><div class="vote-result" id="sp-result" aria-live="polite"></div>
+</article>
 </section>
-<section class="vote-panels"><article class="vote-panel"><h2>🔥 Ta série de votes</h2><p>Ta série quotidienne apparaîtra après la mise en place de l'identification et de la validation des votes.</p></article>
-<article class="vote-panel"><h2>🎁 Tes récompenses</h2><p>Les paliers et tirages seront activés lorsque les votes seront vérifiés côté serveur. Un clic sur un lien ne sera jamais compté comme un vote.</p></article>
-<article class="vote-panel"><h2>🏆 Classement mensuel</h2><p>Le classement sera alimenté uniquement par les votes confirmés par les plateformes partenaires.</p></article></section>
-<div class="vote-note"><strong>Première version :</strong> les quatre plateformes sont affichées. Les compteurs, récompenses et classement ne sont pas encore activés : ils nécessitent une confirmation fiable des votes par les partenaires.</div></main>
-<footer><b>WAR CONTRY</b><br>Votes communautaires · Merci de soutenir le serveur !</footer></body></html>
+<section class="vote-panels">
+<article class="vote-panel"><h2>🔥 Ta série de votes</h2><p>La série sera calculée à partir des votes confirmés, sans confondre les délais propres à chaque plateforme.</p></article>
+<article class="vote-panel"><h2>🎁 Tes récompenses</h2><p>Les récompenses seront définies séparément. Aucun clic sur un lien ne sera considéré comme un vote confirmé.</p></article>
+<article class="vote-panel"><h2>🏆 Classement mensuel</h2><p>Le classement sera alimenté uniquement par les votes confirmés par les plateformes partenaires.</p></article>
+</section>
+<div class="vote-note"><strong>À savoir :</strong> l'intégration Serveur Privé nécessite que le mode OTP soit activé uniquement après le déploiement et le test du Worker. Ne l'active pas avant cette étape.</div>
+</main><footer><b>WAR CONTRY</b><br>Votes communautaires · Merci de soutenir le serveur !</footer>
+<script>
+const API_BASE = "https://warcontry-votes.mr-mystermm.workers.dev";
+const $ = id => document.getElementById(id);
+let activeSession = null;
+let pollHandle = null;
+function showStatus(text){ $("sp-status").textContent = text; }
+async function checkVote(){
+ if(!activeSession) return;
+ try{
+  const r=await fetch(API_BASE+"/status?id="+encodeURIComponent(activeSession),{cache:"no-store"});
+  const data=await r.json();
+  if(!r.ok || !data.ok) throw new Error(data.error||"Vérification impossible.");
+  if(data.status==="confirmed"){
+   clearInterval(pollHandle);pollHandle=null;
+   showStatus("✓ Vote confirmé pour "+data.pseudo+" !");
+   $("sp-result").textContent="Prochain vote possible dans "+formatDuration(data.next_vote_seconds)+".";
+   return;
+  }
+  if(data.status==="expired"){
+   clearInterval(pollHandle);pollHandle=null;
+   showStatus("Le code de vote a expiré. Prépare un nouveau vote.");
+   return;
+  }
+  showStatus("En attente de confirmation de Serveur Privé… ("+data.seconds_left+" s)");
+ }catch(e){showStatus(e.message||"Erreur de vérification.");}
+}
+function formatDuration(total){
+ let s=Math.max(0,Number(total)||0),h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;
+ return (h?h+" h ":"")+(m?m+" min ":"")+sec+" s";
+}
+$("sp-form").addEventListener("submit",async e=>{
+ e.preventDefault();clearInterval(pollHandle);
+ const pseudo=$("sp-pseudo").value.trim();
+ $("sp-start").disabled=true;$("sp-result").textContent="";showStatus("Génération du lien sécurisé…");
+ try{
+  const r=await fetch(API_BASE+"/start",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({pseudo})});
+  const data=await r.json();
+  if(!r.ok||!data.ok) throw new Error(data.error||"Impossible de préparer le vote.");
+  activeSession=data.session;
+  sessionStorage.setItem("wc_sp_vote_session",activeSession);
+  showStatus("Le vote est prêt. La page partenaire va s'ouvrir.");
+  const win=window.open(data.vote_url,"_blank","noopener");
+  if(!win) location.href=data.vote_url;
+  $("sp-result").textContent="Après avoir voté, reviens sur cette page : la vérification se fera automatiquement.";
+  pollHandle=setInterval(checkVote,5000);
+ }catch(err){showStatus(err.message||"Erreur de connexion.");}
+ finally{$("sp-start").disabled=false;}
+});
+activeSession=sessionStorage.getItem("wc_sp_vote_session");
+if(activeSession){showStatus("Session de vote retrouvée. Vérification…");checkVote();pollHandle=setInterval(checkVote,5000);}
+</script></body></html>
