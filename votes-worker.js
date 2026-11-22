@@ -5,7 +5,7 @@ const VOTE_URL = "https://serveur-prive.net/minecraft/war-contry/vote";
 function json(data,status=200,origin=""){
   const headers={"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","Access-Control-Allow-Methods":"GET, POST, OPTIONS","Access-Control-Allow-Headers":"Content-Type","Vary":"Origin"};
   if(ALLOWED_ORIGINS.has(origin)) headers["Access-Control-Allow-Origin"]=origin;
-  return new Response(JSON.stringify(data),{status,headers});
+  return new Response(status===204?null:JSON.stringify(data),{status,headers});
 }
 
 export default {
