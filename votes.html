@@ -64,7 +64,7 @@ async function checkVote(){
   showStatus("En attente de confirmation de ton vote sur Serveur Privé… ("+data.seconds_left+" s)");
  }catch(e){showStatus(e.message||"Erreur de vérification.");}
 }
-const EXTERNAL_WAIT_SECONDS = 120;
+const EXTERNAL_WAIT_SECONDS = 60;
 const externalTimers = new Map();
 function externalStorageKey(platform,pseudo){return "wc_vote_participation_"+platform+"_"+pseudo.toLowerCase();}
 function updateExternalParticipation(form, startedAt){
@@ -90,7 +90,7 @@ document.querySelectorAll(".external-vote-form").forEach(form=>{
   if(!/^[A-Za-z0-9_]{3,16}$/.test(pseudo)){form.parentElement.querySelector(".external-status").textContent="Entre un pseudo Minecraft valide (3 à 16 caractères).";return;}
   const voteWindow=window.open(form.dataset.url,"_blank");
   if(!voteWindow){form.parentElement.querySelector(".external-status").textContent="Le navigateur a bloqué l’ouverture. Autorise les fenêtres pop-up puis réessaie.";return;}
-  voteWindow.opener=null;startExternalParticipation(form,Math.floor(Date.now()/1000));
+  voteWindow.opener=null;form.parentElement.querySelector(".external-status").textContent="⏳ En attente de ton vote…";startExternalParticipation(form,Math.floor(Date.now()/1000));
  });
  const pseudoInput=form.querySelector(".external-pseudo");
  pseudoInput.addEventListener("change",()=>{
