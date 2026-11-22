@@ -13,7 +13,7 @@
 .vote-panels{max-width:1120px;margin:24px auto 0;padding:0 20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
 .vote-panel p{color:#cbd5e3;font-size:14px}.vote-note{max-width:1080px;margin:22px auto;padding:16px 20px;border:1px solid var(--line);border-radius:12px;color:var(--muted);font-size:13px}
 .vote-form{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}.vote-form input{flex:1;min-width:140px;padding:10px;border-radius:8px;border:1px solid var(--line);background:#0a1422;color:#fff}
-.vote-result{font-size:13px;color:#e8d7ae;margin-top:12px;line-height:1.5}.vote-site .vote-action:disabled{opacity:.55;cursor:not-allowed}
+.vote-result{font-size:13px;color:#e8d7ae;margin-top:12px;line-height:1.5}.vote-status.success{color:#22c55e;font-weight:700}.vote-site .vote-action:disabled{opacity:.55;cursor:not-allowed}
 </style></head>
 <body><div class="cal-bg"></div>
 <nav class="nav"><div class="nav-in"><a class="brand" href="index.html"><img src="assets/favicon.png" alt=""><span>WAR CONTRY</span></a><div class="links"><a href="index.html">Événement de Noël</a><a href="calendrier.html">🎁 Calendrier de l'Avent</a><a href="votes.html" class="cta on">🗳️ Votes</a></div></div></nav>
@@ -42,7 +42,7 @@ const API_BASE = "https://warcontry-votes.mr-mystermm.workers.dev";
 const $ = id => document.getElementById(id);
 let activeSession = null;
 let pollHandle = null;
-function showStatus(text){ $("sp-status").textContent = text; }
+function showStatus(text, success=false){ const el=$("sp-status");el.textContent=text;el.classList.toggle("success",success); }
 async function checkVote(){
  if(!activeSession) return;
  try{
@@ -51,7 +51,7 @@ async function checkVote(){
   if(!r.ok || !data.ok) throw new Error(data.error||"Vérification impossible.");
   if(data.status==="confirmed"){
    clearInterval(pollHandle);pollHandle=null;
-   showStatus("✓ Vote confirmé pour "+data.pseudo+" !");
+   showStatus("✓ Vote confirmé pour "+data.pseudo+" !",true);
    $("sp-result").textContent="Merci d’avoir soutenu War Contry !";
    return;
   }
