@@ -71,6 +71,9 @@ function formatDuration(total){
 $("sp-form").addEventListener("submit",async e=>{
  e.preventDefault();clearInterval(pollHandle);
  const pseudo=$("sp-pseudo").value.trim();
+ // Ouvre l'onglet immédiatement pendant le clic, pour éviter le blocage des pop-ups.
+ const voteWindow=window.open("about:blank","_blank");
+ if(voteWindow) voteWindow.opener=null;
  $("sp-start").disabled=true;$("sp-result").textContent="";showStatus("Préparation de la vérification du vote…");
  try{
   const r=await fetch(API_BASE+"/start",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({pseudo})});
@@ -79,12 +82,22 @@ $("sp-form").addEventListener("submit",async e=>{
   activeSession=data.session;
   sessionStorage.setItem("wc_sp_vote_session",activeSession);
   showStatus("Le vote est prêt. La page partenaire va s'ouvrir.");
-  const win=window.open(data.vote_url,"_blank","noopener");
-  if(!win) location.href=data.vote_url;
-  $("sp-result").textContent="Après avoir voté, reviens sur cette page : la vérification se fera automatiquement pendant 15 minutes.";
+  if(voteWindow){
+   voteWindow.location.href=data.vote_url;
+   $("sp-result").textContent="Après avoir voté, reviens sur cette page : la vérification se fera automatiquement pendant 15 minutes.";
+  }else{
+   $("sp-result").textContent="Le navigateur a bloqué l'ouverture automatique. ";
+   const link=document.createElement("a");
+   link.href=data.vote_url;link.target="_blank";link.rel="noopener noreferrer";
+   link.textContent="Clique ici pour ouvrir la page de vote.";
+   link.style.color="var(--gold)";
+   $("sp-result").appendChild(link);
+  }
   pollHandle=setInterval(checkVote,5000);
- }catch(err){showStatus(err.message||"Erreur de connexion.");}
- finally{$("sp-start").disabled=false;}
+ }catch(err){
+  if(voteWindow) voteWindow.close();
+  showStatus(err.message||"Erreur de connexion.");
+ }finally{$("sp-start").disabled=false;}
 });
 activeSession=sessionStorage.getItem("wc_sp_vote_session");
 if(activeSession){showStatus("Session de vote retrouvée. Vérification…");checkVote();pollHandle=setInterval(checkVote,5000);}
