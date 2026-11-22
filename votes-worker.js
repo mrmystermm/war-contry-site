@@ -2,6 +2,7 @@ const ALLOWED_ORIGINS = new Set(["https://play-warcontry.com", "https://www.play
 const API = "https://serveur-prive.net/api/v1/servers";
 const VOTE_URL = "https://serveur-prive.net/minecraft/war-contry/vote";
 const SESSION_TTL_SECONDS = 900;
+const VOTE_LOOKBACK_SECONDS = 89 * 60;
 
 function json(data, status = 200, origin = "") {
   const headers = {
@@ -59,17 +60,12 @@ export default {
           return json({ ok: false, error: "Entre un pseudo Minecraft valide (3 à 16 caractères)." }, 400, origin);
         }
 
-        // Snapshot du dernier vote déjà présent pour ce pseudo : il ne sera pas recompté.
-        const votes = await getRecentVotes(env.SERVEUR_PRIVE_TOKEN);
-        const baseline = votes
-          .filter(v => String(v.username || "").toLowerCase() === pseudo.toLowerCase())
-          .reduce((latest, v) => Math.max(latest, Number(v.voted_at) || 0), 0);
-
+        // La vérification cherchera les votes de ce pseudo dans les 89 dernières minutes.
         const id = crypto.randomUUID();
         const createdAt = Math.floor(Date.now() / 1000);
         await env.DB.prepare(
-          "INSERT INTO sp_vote_sessions (id, pseudo, otp_token, status, created_at, baseline_voted_at) VALUES (?, ?, ?, 'pending', ?, ?)"
-        ).bind(id, pseudo, `no-otp-${id}`, createdAt, baseline).run();
+          "INSERT INTO sp_vote_sessions (id, pseudo, otp_token, status, created_at, baseline_voted_at) VALUES (?, ?, ?, 'pending', ?, 0)"
+        ).bind(id, pseudo, `no-otp-${id}`, createdAt).run();
 
         const voteUrl = `${VOTE_URL}/${encodeURIComponent(pseudo)}`;
         return json({ ok: true, session: id, vote_url: voteUrl }, 200, origin);
@@ -95,11 +91,11 @@ export default {
         }
 
         const votes = await getRecentVotes(env.SERVEUR_PRIVE_TOKEN);
+        const oldestAcceptedVote = now - VOTE_LOOKBACK_SECONDS;
         const matchingVote = votes
           .filter(v =>
             String(v.username || "").toLowerCase() === session.pseudo.toLowerCase() &&
-            Number(v.voted_at) > Number(session.baseline_voted_at || 0) &&
-            Number(v.voted_at) >= session.created_at
+            Number(v.voted_at) >= oldestAcceptedVote
           )
           .sort((a, b) => Number(b.voted_at) - Number(a.voted_at))[0];
 
