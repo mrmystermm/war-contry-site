@@ -42,7 +42,7 @@ const API_BASE = "https://warcontry-votes.mr-mystermm.workers.dev";
 const $ = id => document.getElementById(id);
 let activeSession = null;
 let pollHandle = null;
-function showStatus(text, success=false){ const el=$("sp-status");el.textContent=text;el.classList.toggle("success",success); }
+function showStatus(text, success=false){ const el=$("sp-status");el.textContent=text;el.classList.toggle("success",success);el.style.color=success?"#22c55e":""; }
 async function checkVote(){
  if(!activeSession) return;
  try{
