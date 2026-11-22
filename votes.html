@@ -21,9 +21,9 @@
 <section class="vote-intro"><p>Chaque plateforme possède son propre délai. Un vote n'est comptabilisé qu'après confirmation par la plateforme.</p></section>
 <main>
 <section class="vote-sites" aria-label="Sites de vote">
-<article class="vote-site"><h2>Planet Minecraft</h2><p>Soutiens War Contry sur Planet Minecraft.</p><form class="vote-form external-vote-form" data-platform="planet-minecraft" data-url="https://www.planetminecraft.com/server/war-contry/vote/"><input class="external-pseudo" maxlength="16" minlength="3" autocomplete="off" placeholder="Pseudo Minecraft" required><button class="vote-action" type="submit">Ouvrir et participer ↗</button></form><div class="vote-status external-status" aria-live="polite">Délai indicatif : 2 minutes après l’ouverture.</div></article>
-<article class="vote-site"><h2>Serveur Minecraft</h2><p>Ajoute ton vote sur la liste Serveur Minecraft.</p><form class="vote-form external-vote-form" data-platform="serveur-minecraft" data-url="https://serveur-minecraft.com/6077"><input class="external-pseudo" maxlength="16" minlength="3" autocomplete="off" placeholder="Pseudo Minecraft" required><button class="vote-action" type="submit">Ouvrir et participer ↗</button></form><div class="vote-status external-status" aria-live="polite">Délai indicatif : 2 minutes après l’ouverture.</div></article>
-<article class="vote-site"><h2>Minecraft IP List</h2><p>Retrouve War Contry dans la liste Minecraft IP List.</p><form class="vote-form external-vote-form" data-platform="minecraft-ip-list" data-url="https://www.minecraftiplist.com/server/WarContry-45835"><input class="external-pseudo" maxlength="16" minlength="3" autocomplete="off" placeholder="Pseudo Minecraft" required><button class="vote-action" type="submit">Ouvrir et participer ↗</button></form><div class="vote-status external-status" aria-live="polite">Délai indicatif : 2 minutes après l’ouverture.</div></article>
+<article class="vote-site"><h2>Planet Minecraft</h2><p>Soutiens War Contry sur Planet Minecraft.</p><form class="vote-form external-vote-form" data-platform="planet-minecraft" data-url="https://www.planetminecraft.com/server/war-contry/vote/"><input class="external-pseudo" maxlength="16" minlength="3" autocomplete="off" placeholder="Pseudo Minecraft" required><button class="vote-action" type="submit">Ouvrir et participer ↗</button></form><div class="vote-status external-status" aria-live="polite"> </div></article>
+<article class="vote-site"><h2>Serveur Minecraft</h2><p>Ajoute ton vote sur la liste Serveur Minecraft.</p><form class="vote-form external-vote-form" data-platform="serveur-minecraft" data-url="https://serveur-minecraft.com/6077"><input class="external-pseudo" maxlength="16" minlength="3" autocomplete="off" placeholder="Pseudo Minecraft" required><button class="vote-action" type="submit">Ouvrir et participer ↗</button></form><div class="vote-status external-status" aria-live="polite"> </div></article>
+<article class="vote-site"><h2>Minecraft IP List</h2><p>Retrouve War Contry dans la liste Minecraft IP List.</p><form class="vote-form external-vote-form" data-platform="minecraft-ip-list" data-url="https://www.minecraftiplist.com/server/WarContry-45835"><input class="external-pseudo" maxlength="16" minlength="3" autocomplete="off" placeholder="Pseudo Minecraft" required><button class="vote-action" type="submit">Ouvrir et participer ↗</button></form><div class="vote-status external-status" aria-live="polite"> </div></article>
 <article class="vote-site" id="serveur-prive">
 <h2>Serveur Privé</h2><p>Entre ton pseudo Minecraft, puis utilise le bouton pour générer un lien de vote sécurisé.</p>
 <form class="vote-form" id="sp-form"><input id="sp-pseudo" maxlength="16" minlength="3" autocomplete="off" placeholder="Pseudo Minecraft" required><button class="vote-action" id="sp-start" type="submit">Préparer mon vote</button></form>
@@ -64,7 +64,7 @@ async function checkVote(){
   showStatus("En attente de confirmation de ton vote sur Serveur Privé… ("+data.seconds_left+" s)");
  }catch(e){showStatus(e.message||"Erreur de vérification.");}
 }
-const EXTERNAL_WAIT_SECONDS = 60;
+const EXTERNAL_WAIT_SECONDS = 30;
 const externalTimers = new Map();
 function externalStorageKey(platform,pseudo){return "wc_vote_participation_"+platform+"_"+pseudo.toLowerCase();}
 function updateExternalParticipation(form, startedAt){
@@ -77,7 +77,7 @@ function updateExternalParticipation(form, startedAt){
   clearInterval(externalTimers.get(key));externalTimers.delete(key);localStorage.setItem(key,JSON.stringify({startedAt,accepted:true}));
   status.textContent="✓ Participation acceptée ! Merci d’avoir voté pour War Contry !";status.style.color="#22c55e";status.style.fontWeight="700";button.disabled=false;button.textContent="Participer à nouveau";return;
  }
- status.textContent="Lien ouvert. Enregistrement de la participation dans "+formatDuration(remaining)+"…";status.style.color="";button.disabled=true;button.textContent="Patiente…";
+ status.textContent="⏳ En attente de ton vote…";status.style.color="";button.disabled=true;button.textContent="En attente…";
 }
 function startExternalParticipation(form, startedAt){
  const pseudo=form.querySelector(".external-pseudo").value.trim();const key=externalStorageKey(form.dataset.platform,pseudo);
