@@ -55,6 +55,7 @@ async function checkVote(){
    $("sp-result").textContent="Prochain vote possible dans "+formatDuration(data.next_vote_seconds)+".";
    return;
   }
+  if(data.status==="username_mismatch"){ clearInterval(pollHandle);pollHandle=null;showStatus("Le pseudo confirmé par Serveur Privé ne correspond pas. Aucun vote n’a été attribué.");return;}
   if(data.status==="expired"){
    clearInterval(pollHandle);pollHandle=null;
    showStatus("Le code de vote a expiré. Prépare un nouveau vote.");
