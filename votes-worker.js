@@ -73,8 +73,14 @@ export default {
       });
     }
 
-    if (!ALLOWED_ORIGINS.has(origin)) return json({ ok: false, error: "Origine non autorisée." }, 403, origin);
-    if (!env.DB || !env.ACCOUNT_DB || !env.SERVEUR_PRIVE_TOKEN) {
+    const isPublicLeaderboard = request.method === "GET" && url.pathname === "/leaderboard";
+    if (!ALLOWED_ORIGINS.has(origin) && !(isPublicLeaderboard && !origin)) {
+      return json({ ok: false, error: "Origine non autorisée." }, 403, origin);
+    }
+    if (isPublicLeaderboard && !env.ACCOUNT_DB) {
+      return json({ ok: false, error: "La base des comptes (ACCOUNT_DB) est introuvable." }, 500, origin);
+    }
+    if (!isPublicLeaderboard && (!env.DB || !env.ACCOUNT_DB || !env.SERVEUR_PRIVE_TOKEN)) {
       return json({ ok: false, error: "Configuration Worker incomplète. Vérifie les liaisons DB, ACCOUNT_DB et le secret API." }, 500, origin);
     }
 
@@ -82,7 +88,7 @@ export default {
       if (url.pathname === "/leaderboard" && request.method === "GET") {
         const requestedMonth = url.searchParams.get("month") || "";
         const month = requestedMonth || new Date().toISOString().slice(0, 7);
-        if (!/^\\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+        if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
           return json({ ok: false, error: "Mois invalide. Utilise le format AAAA-MM." }, 400, origin);
         }
         const start = Math.floor(Date.parse(month + "-01T00:00:00.000Z") / 1000);
