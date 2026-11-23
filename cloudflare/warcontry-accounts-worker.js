@@ -226,7 +226,7 @@ async function handle(request, env) {
       const data = await readJson(request);
       const newEmail = String(data.email || "").trim().toLowerCase();
       const currentPassword = String(data.currentPassword || "");
-      if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(newEmail) || newEmail.length > 254) return json({ ok: false, error: "Adresse e-mail invalide." }, 400, cors);
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail) || newEmail.length > 254) return json({ ok: false, error: "Adresse e-mail invalide." }, 400, cors);
       if (newEmail === String(account.email).toLowerCase()) return json({ ok: false, error: "Cette adresse est déjà celle de ton compte." }, 400, cors);
       if (!currentPassword || currentPassword.length > 128) return json({ ok: false, error: "Saisis ton mot de passe actuel pour confirmer." }, 400, cors);
       const credentials = await env.DB.prepare("SELECT password_hash FROM accounts WHERE id = ?").bind(account.id).first();
