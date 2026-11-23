@@ -141,18 +141,27 @@ function formatRemaining(seconds){
 
 function updateExternalButtons(){
  document.querySelectorAll(".external-vote-form").forEach(form=>{
-  const source=form.dataset.platform;
   const button=form.querySelector("button");
   const status=form.parentElement.querySelector(".external-status");
+  const now=Math.floor(Date.now()/1000);
   const until=Number(form.dataset.cooldownUntil||0);
-  const remaining=Math.max(0,until-Math.floor(Date.now()/1000));
+  const remaining=Math.max(0,until-now);
+  const participationUntil=Number(form.dataset.participationUntil||0);
+  const participationRemaining=Math.max(0,participationUntil-now);
   button.disabled=remaining>0;
-  if(remaining>0){
-   button.textContent="Disponible dans "+formatRemaining(remaining);
+  button.textContent=remaining>0?"Disponible dans "+formatRemaining(remaining):"Ouvrir et participer ↗";
+  if(participationRemaining>0){
+   status.textContent="Merci de patienter encore "+participationRemaining+" seconde"+(participationRemaining>1?"s":"")+"…";
+  }else if(form.dataset.participationUntil){
+   delete form.dataset.participationUntil;
+   form.dataset.participationDone="yes";
+   status.textContent="Merci pour ton soutien à War Contry !";
+  }else if(form.dataset.participationDone==="yes"){
+   status.textContent="Merci pour ton soutien à War Contry !";
+  }else if(remaining>0){
    status.textContent="Prochaine participation possible dans "+formatRemaining(remaining)+".";
-  }else{
-   button.textContent="Ouvrir et participer ↗";
-   if(form.dataset.cooldownLoaded==="yes") status.textContent="Tu peux ouvrir cette plateforme.";
+  }else if(form.dataset.cooldownLoaded==="yes"){
+   status.textContent="Tu peux ouvrir cette plateforme.";
   }
  });
 }
@@ -217,18 +226,9 @@ document.querySelectorAll(".external-vote-form").forEach(form=>{
    form.dataset.cooldownUntil=String(data.next_available_at);
    form.dataset.cooldownLoaded="yes";
    voteWindow.location.href=form.dataset.url;
-   status.textContent="Page partenaire ouverte. Merci de patienter 5 secondes…";
+   form.dataset.participationUntil=String(Math.floor(Date.now()/1000)+5);
+   delete form.dataset.participationDone;
    updateExternalButtons();
-   let secondsLeft=5;
-   const participationTimer=setInterval(()=>{
-    secondsLeft--;
-    if(secondsLeft>0){
-     status.textContent="Merci de patienter encore "+secondsLeft+" seconde"+(secondsLeft>1?"s":"")+"…";
-    }else{
-     clearInterval(participationTimer);
-     status.textContent="Merci pour ton soutien à War Contry !";
-    }
-   },1000);
    }catch(error){
    status.textContent=error.message||"Une erreur est survenue. Réessaie plus tard.";
    updateExternalButtons();
