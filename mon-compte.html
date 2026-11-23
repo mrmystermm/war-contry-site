@@ -1,1 +1,13 @@
-<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#060d1a"><title>Mon compte — War Contry</title><link rel="stylesheet" href="auth.css"></head><body><nav class="auth-nav"><a class="brand" href="index.html">WAR CONTRY</a><a href="index.html">← Retour au site</a></nav><main class="auth-wrap"><section class="auth-card"><span class="eyebrow">Espace personnel</span><h1>Mon compte</h1><p>Retrouve les informations de ton compte War Contry.</p><div id="account-details"><p>Pseudo : <strong id="account-name">Chargement…</strong></p><p>E-mail : <strong id="account-email">Chargement…</strong></p><button class="primary" id="logout">Se déconnecter</button></div><div id="notice" class="notice" role="status" aria-live="polite"></div></section></main><footer>WAR CONTRY · Espace joueur</footer><script src="auth.js"></script></body></html>
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#060d1a"><title>Mon compte — War Contry</title><link rel="stylesheet" href="auth.css"></head>
+<body><nav class="auth-nav"><a class="brand" href="index.html">WAR CONTRY</a><a href="index.html">← Retour au site</a></nav>
+<main class="settings-wrap"><div class="settings-layout">
+<aside class="settings-side" aria-label="Paramètres du compte">
+<a class="active" href="mon-compte.html">👤 Compte</a><a href="langue.html">🌐 Langue</a><a href="apparence.html">🎨 Apparence</a><a href="securite.html">🔒 Sécurité</a><a href="zone-sensible.html">⚠️ Zone sensible</a>
+</aside>
+<section class="settings-main"><span class="eyebrow">Espace personnel</span><h1>Mon compte</h1><p>Gère les informations principales de ton compte War Contry.</p>
+<div id="account-details"><div class="setting-row"><div><strong>Pseudo</strong><small id="account-name">Chargement…</small></div><a class="setting-link" href="modifier-pseudo.html">Modifier →</a></div>
+<div class="setting-row"><div><strong>Adresse e-mail</strong><small id="account-email">Chargement…</small></div><a class="setting-link" href="modifier-email.html">Modifier →</a></div>
+<div class="setting-row"><div><strong>Mot de passe</strong><small>Protège l'accès à ton compte.</small></div><a class="setting-link" href="securite.html">Gérer →</a></div>
+<button class="primary" id="logout">Se déconnecter</button></div><div id="notice" class="notice" role="status" aria-live="polite"></div></section>
+</div></main><footer>WAR CONTRY · Espace joueur</footer><script src="auth.js"></script><script src="preferences.js"></script></body></html>
