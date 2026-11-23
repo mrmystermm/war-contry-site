@@ -176,8 +176,94 @@ async function handle(request, env) {
       const account = await env.DB.prepare("SELECT id, email, username, password_hash, email_verified_at FROM accounts WHERE email = ?").bind(email).first();
       if (!account || !await verifyPassword(password, account.password_hash)) return json({ ok: false, error: "Adresse e-mail ou mot de passe incorrect." }, 401, cors);
       if (!account.email_verified_at) return json({ ok: false, error: "Vérifie d'abord ton adresse e-mail." }, 403, cors);
+      if (account.email_2fa_enabled === 1) {
+        const recent = await env.DB.prepare("SELECT created_at FROM email_2fa_challenges WHERE account_id = ? AND purpose = 'login' AND used_at IS NULL ORDER BY created_at DESC LIMIT 1").bind(account.id).first();
+        if (recent && now() - recent.created_at < 45) return json({ ok: false, error: "Un code vient déjà d'être envoyé. Attends quelques secondes." }, 429, cors);
+        const challengeId = crypto.randomUUID();
+        const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, "0");
+        const timestamp = now();
+        await env.DB.prepare("INSERT INTO email_2fa_challenges (id, account_id, purpose, code_mac, expires_at, attempts, created_at) VALUES (?, ?, 'login', ?, ?, 0, ?)").bind(challengeId, account.id, await sha256(challengeId + ":" + code), timestamp + 600, timestamp).run();
+        try {
+          await sendEmail(env, account.email, "Ton code de connexion — War Contry", '<div style="background:#07111f;padding:32px;font-family:Arial,sans-serif;color:#edf2f8"><div style="max-width:560px;margin:auto;background:#111e30;border:1px solid #34445b;border-radius:14px;padding:30px"><p style="color:#e8c46b;font-weight:bold;letter-spacing:3px">WAR CONTRY</p><h1 style="color:#f4d58d">Code de connexion</h1><p>Voici ton code de sécurité :</p><p style="font-size:32px;letter-spacing:8px;font-weight:bold;color:#f4d58d">' + code + '</p><p>Ce code expire dans 10 minutes et ne peut être utilisé qu’une fois.</p></div></div>');
+        } catch (error) {
+          await env.DB.prepare("UPDATE email_2fa_challenges SET used_at = ? WHERE id = ?").bind(timestamp, challengeId).run();
+          throw error;
+        }
+        return json({ ok: true, requires2FA: true, challengeId, message: "Un code de sécurité vient d'être envoyé à ton adresse e-mail." }, 200, cors);
+      }
       const token = await createSession(env, account.id);
       return json({ ok: true, token, account: { username: account.username, email: account.email }, message: "Connexion réussie." }, 200, cors);
+    }
+    if (route === "/verify-login-code" && request.method === "POST") {
+      const data = await readJson(request);
+      const challengeId = String(data.challengeId || "");
+      const code = String(data.code || "").trim();
+      if (!/^[0-9]{6}$/.test(code) || challengeId.length > 80) return json({ ok: false, error: "Code invalide." }, 400, cors);
+      const challenge = await env.DB.prepare("SELECT id, account_id, code_mac, expires_at, attempts, used_at FROM email_2fa_challenges WHERE id = ? AND purpose = 'login'").bind(challengeId).first();
+      if (!challenge || challenge.used_at || challenge.expires_at < now() || challenge.attempts >= 5) return json({ ok: false, error: "Ce code est invalide ou expiré. Recommence la connexion." }, 400, cors);
+      const expected = await sha256(challengeId + ":" + code);
+      if (expected !== challenge.code_mac) {
+        await env.DB.prepare("UPDATE email_2fa_challenges SET attempts = attempts + 1 WHERE id = ?").bind(challengeId).run();
+        return json({ ok: false, error: "Code incorrect." }, 401, cors);
+      }
+      const timestamp = now();
+      await env.DB.prepare("UPDATE email_2fa_challenges SET used_at = ? WHERE id = ? AND used_at IS NULL").bind(timestamp, challengeId).run();
+      const account = await env.DB.prepare("SELECT id, email, username, email_2fa_enabled FROM accounts WHERE id = ?").bind(challenge.account_id).first();
+      if (!account || account.email_2fa_enabled !== 1) return json({ ok: false, error: "La vérification de sécurité n'est plus valide. Recommence la connexion." }, 400, cors);
+      const token = await createSession(env, account.id);
+      return json({ ok: true, token, account: { username: account.username, email: account.email }, message: "Connexion réussie." }, 200, cors);
+    }
+    if (route === "/email-2fa-status" && request.method === "GET") {
+      const account = await authenticatedAccount(request, env);
+      if (!account) return json({ ok: false, error: "Session expirée. Reconnecte-toi." }, 401, cors);
+      const row = await env.DB.prepare("SELECT email_2fa_enabled FROM accounts WHERE id = ?").bind(account.id).first();
+      return json({ ok: true, enabled: row.email_2fa_enabled === 1 }, 200, cors);
+    }
+    if (route === "/email-2fa-request" && request.method === "POST") {
+      const account = await authenticatedAccount(request, env);
+      if (!account) return json({ ok: false, error: "Session expirée. Reconnecte-toi." }, 401, cors);
+      if (!await rateLimit(env, "email-2fa:" + account.id, 5, 3600)) return json({ ok: false, error: "Trop de demandes. Réessaie dans une heure." }, 429, cors);
+      const data = await readJson(request);
+      const purpose = String(data.purpose || "");
+      const password = String(data.password || "");
+      if (!["enable", "disable"].includes(purpose)) return json({ ok: false, error: "Demande invalide." }, 400, cors);
+      const current = await env.DB.prepare("SELECT password_hash, email_2fa_enabled FROM accounts WHERE id = ?").bind(account.id).first();
+      if (!current || !await verifyPassword(password, current.password_hash)) return json({ ok: false, error: "Mot de passe actuel incorrect." }, 401, cors);
+      if ((purpose === "enable" && current.email_2fa_enabled === 1) || (purpose === "disable" && current.email_2fa_enabled === 0)) return json({ ok: false, error: "Ce réglage est déjà dans cet état." }, 400, cors);
+      const recent = await env.DB.prepare("SELECT created_at FROM email_2fa_challenges WHERE account_id = ? AND purpose = ? AND used_at IS NULL ORDER BY created_at DESC LIMIT 1").bind(account.id, purpose).first();
+      if (recent && now() - recent.created_at < 45) return json({ ok: false, error: "Un code vient déjà d'être envoyé. Attends quelques secondes." }, 429, cors);
+      const challengeId = crypto.randomUUID();
+      const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, "0");
+      const timestamp = now();
+      await env.DB.prepare("INSERT INTO email_2fa_challenges (id, account_id, purpose, code_mac, expires_at, attempts, created_at) VALUES (?, ?, ?, ?, ?, 0, ?)").bind(challengeId, account.id, purpose, await sha256(challengeId + ":" + code), timestamp + 600, timestamp).run();
+      const subject = purpose === "enable" ? "Activation de l'A2F — War Contry" : "Désactivation de l'A2F — War Contry";
+      try {
+        await sendEmail(env, account.email, subject, '<div style="background:#07111f;padding:32px;font-family:Arial,sans-serif;color:#edf2f8"><div style="max-width:560px;margin:auto;background:#111e30;border:1px solid #34445b;border-radius:14px;padding:30px"><p style="color:#e8c46b;font-weight:bold;letter-spacing:3px">WAR CONTRY</p><h1 style="color:#f4d58d">Confirmation de sécurité</h1><p>Voici ton code de confirmation :</p><p style="font-size:32px;letter-spacing:8px;font-weight:bold;color:#f4d58d">' + code + '</p><p>Ce code expire dans 10 minutes.</p></div></div>');
+      } catch (error) {
+        await env.DB.prepare("UPDATE email_2fa_challenges SET used_at = ? WHERE id = ?").bind(timestamp, challengeId).run();
+        throw error;
+      }
+      return json({ ok: true, challengeId, message: "Un code de confirmation vient d'être envoyé à ton adresse e-mail." }, 200, cors);
+    }
+    if (route === "/email-2fa-confirm" && request.method === "POST") {
+      const account = await authenticatedAccount(request, env);
+      if (!account) return json({ ok: false, error: "Session expirée. Reconnecte-toi." }, 401, cors);
+      const data = await readJson(request);
+      const challengeId = String(data.challengeId || "");
+      const code = String(data.code || "").trim();
+      if (!/^[0-9]{6}$/.test(code) || challengeId.length > 80) return json({ ok: false, error: "Code invalide." }, 400, cors);
+      const challenge = await env.DB.prepare("SELECT id, purpose, code_mac, expires_at, attempts, used_at FROM email_2fa_challenges WHERE id = ? AND account_id = ? AND purpose IN ('enable', 'disable')").bind(challengeId, account.id).first();
+      if (!challenge || challenge.used_at || challenge.expires_at < now() || challenge.attempts >= 5) return json({ ok: false, error: "Ce code est invalide ou expiré. Recommence la demande." }, 400, cors);
+      if (await sha256(challengeId + ":" + code) !== challenge.code_mac) {
+        await env.DB.prepare("UPDATE email_2fa_challenges SET attempts = attempts + 1 WHERE id = ?").bind(challengeId).run();
+        return json({ ok: false, error: "Code incorrect." }, 401, cors);
+      }
+      const timestamp = now();
+      await env.DB.batch([
+        env.DB.prepare("UPDATE email_2fa_challenges SET used_at = ? WHERE id = ? AND used_at IS NULL").bind(timestamp, challengeId),
+        env.DB.prepare("UPDATE accounts SET email_2fa_enabled = ? WHERE id = ?").bind(challenge.purpose === "enable" ? 1 : 0, account.id)
+      ]);
+      return json({ ok: true, enabled: challenge.purpose === "enable", message: challenge.purpose === "enable" ? "L'authentification à deux facteurs est maintenant activée." : "L'authentification à deux facteurs a été désactivée." }, 200, cors);
     }
     if (route === "/forgot-password" && request.method === "POST") {
       const data = await readJson(request);
