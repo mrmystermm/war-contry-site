@@ -43,16 +43,36 @@ document.addEventListener("DOMContentLoaded",()=>{
  bind("forgot-form","/forgot-password",()=>({email:$("email").value}),()=> $("forgot-form").reset());
  bind("reset-form","/reset-password",()=>({token:token(),password:$("password").value}),()=> $("reset-form").reset());
  const v=$("verify-action");
+ const emailChangeMode=params.get("mode")==="email-change";
+ if(emailChangeMode){
+  document.title="Confirmer le changement d'adresse — War Contry";
+  const heading=document.querySelector(".auth-card h1");
+  if(heading)heading.textContent="Confirmer le changement d'adresse";
+  const description=$("verify-description");
+  if(description)description.textContent="Clique sur le bouton pour confirmer le changement de ton adresse e-mail.";
+  if(v)v.textContent="Confirmer le changement d'adresse";
+  const eyebrow=document.querySelector(".auth-card .eyebrow");
+  if(eyebrow)eyebrow.textContent="Sécurité du compte";
+ }
  if(v)v.addEventListener("click",async()=>{
   v.disabled=true;
   show("Vérification en cours…");
   try{
-   const d=await call("/verify",{token:token()});
-   localStorage.setItem("wc_account_token",d.token);
-   v.hidden=true;
-   const description=$("verify-description");
-   if(description)description.textContent="Ton adresse e-mail a bien été vérifiée. Ton compte est maintenant actif et tu es connecté.";
-   show("Compte vérifié avec succès ! Tu peux fermer cette page et retourner à l'onglet où tu as fait ton inscription.","ok");
+   if(emailChangeMode){
+    const d=await call("/confirm-email-change",{token:token()});
+    v.hidden=true;
+    const description=$("verify-description");
+    if(description)description.textContent="Ton adresse e-mail a bien été modifiée. Tu vas être redirigé vers les paramètres de ton compte.";
+    show(d.message||"Adresse e-mail modifiée avec succès !","ok");
+    window.setTimeout(()=>location.replace("mon-compte.html"),1800);
+   }else{
+    const d=await call("/verify",{token:token()});
+    localStorage.setItem("wc_account_token",d.token);
+    v.hidden=true;
+    const description=$("verify-description");
+    if(description)description.textContent="Ton adresse e-mail a bien été vérifiée. Ton compte est maintenant actif et tu es connecté.";
+    show("Compte vérifié avec succès ! Tu peux fermer cette page et retourner à l'onglet où tu as fait ton inscription.","ok");
+   }
   }catch(e){
    v.disabled=false;
    show(e.message,"error");
