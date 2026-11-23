@@ -13,7 +13,7 @@
 .vote-panels{max-width:1120px;margin:24px auto 0;padding:0 20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
 .vote-panel p{color:#cbd5e3;font-size:14px}.vote-note{max-width:1080px;margin:22px auto;padding:16px 20px;border:1px solid var(--line);border-radius:12px;color:var(--muted);font-size:13px}
 .vote-form{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}.vote-form input{flex:1;min-width:140px;padding:10px;border-radius:8px;border:1px solid var(--line);background:#0a1422;color:#fff}
-.vote-result{font-size:13px;color:#e8d7ae;margin-top:12px;line-height:1.5}.vote-status.success{color:#22c55e;font-weight:700}.vote-site .vote-action:disabled{opacity:.55;cursor:not-allowed}
+.vote-result{font-size:13px;color:#e8d7ae;margin-top:12px;line-height:1.5}.vote-status.success{color:#22c55e;font-weight:700}.vote-site .vote-action:disabled{opacity:.55;cursor:not-allowed;filter:grayscale(.8)}
 </style></head>
 <body><div class="cal-bg"></div>
 <nav class="nav"><div class="nav-in"><a class="brand" href="index.html"><img src="assets/favicon.png" alt=""><span>WAR CONTRY</span></a><div class="links"><a href="index.html">Événement de Noël</a><a href="calendrier.html">🎁 Calendrier de l'Avent</a><a href="votes.html" class="cta on">🗳️ Votes</a><a href="connexion.html">👤 Connexion</a></div></div></nav>
@@ -31,11 +31,11 @@
 </article>
 </section>
 <section class="vote-panels">
-<article class="vote-panel"><h2>📜 Historique de tes votes</h2><p id="vote-history">Connecte-toi pour consulter tes votes confirmés.</p></article>
-<article class="vote-panel"><h2>🎁 Tes récompenses</h2><p>Les récompenses seront définies séparément. Aucun clic sur un lien ne sera considéré comme un vote confirmé.</p></article>
-<article class="vote-panel"><h2>🏆 Classement mensuel</h2><p>Le classement sera alimenté uniquement par les votes confirmés par les plateformes partenaires.</p></article>
+<article class="vote-panel"><h2>📜 Historique et participations</h2><p id="vote-history">Connecte-toi pour consulter ton historique.</p></article>
+<article class="vote-panel"><h2>🎁 Tes récompenses</h2><p>Les récompenses seront définies séparément. Les ouvertures de plateformes sans confirmation automatique resteront des participations et ne déclencheront pas de récompense individuelle.</p></article>
+<article class="vote-panel"><h2>🏆 Classement mensuel</h2><p>Le classement distinguera les votes réellement confirmés des simples participations aux plateformes externes.</p></article>
 </section>
-<div class="vote-note"><strong>À savoir :</strong> l'intégration Serveur Privé vérifie les votes récents fournis par l'API. Seuls les votes détectés après le début de la session sont comptabilisés.</div>
+<div class="vote-note"><strong>À savoir :</strong> Serveur Privé confirme automatiquement les votes. Pour les autres plateformes, War Contry mémorise l’ouverture de la page et applique un délai, sans prétendre vérifier le vote lui-même.</div>
 </main><footer><b>WAR CONTRY</b><br>Votes communautaires · Merci de soutenir le serveur !</footer>
 <script>
 const API_BASE = "https://warcontry-votes.mr-mystermm.workers.dev";
@@ -45,6 +45,7 @@ const accountToken = localStorage.getItem("wc_account_token") || "";
 let accountUsername = "";
 let activeSession = null;
 let pollHandle = null;
+let externalCountdownHandle = null;
 
 function showStatus(text, success=false){
  const el=$("sp-status");
@@ -63,22 +64,51 @@ async function loadHistory(){
   const response=await fetch(API_BASE+"/history",{headers:authHeaders(),cache:"no-store"});
   const data=await response.json();
   if(!response.ok||!data.ok) throw new Error(data.error||"Historique indisponible.");
-  if(!data.votes.length){
-   $("vote-history").textContent="Aucun vote confirmé pour le moment.";
-   return;
+
+  const container=$("vote-history");
+  container.textContent="";
+
+  const confirmedTitle=document.createElement("strong");
+  confirmedTitle.textContent="Votes confirmés";
+  container.appendChild(confirmedTitle);
+
+  if(data.votes.length){
+   const list=document.createElement("ul");
+   list.style.paddingLeft="20px";
+   data.votes.forEach(vote=>{
+    const item=document.createElement("li");
+    item.textContent=vote.source+" — "+formatDate(vote.voted_at);
+    list.appendChild(item);
+   });
+   container.appendChild(list);
+  }else{
+   const empty=document.createElement("p");
+   empty.textContent="Aucun vote confirmé pour le moment.";
+   container.appendChild(empty);
   }
-  const list=document.createElement("ul");
-  list.style.paddingLeft="20px";
-  data.votes.forEach(vote=>{
-   const item=document.createElement("li");
-   item.textContent=vote.source+" — "+formatDate(vote.voted_at);
-   list.appendChild(item);
-  });
-  $("vote-history").textContent="";
-  $("vote-history").appendChild(list);
+
   const count=document.createElement("p");
   count.textContent="Total : "+data.total+" vote(s) confirmé(s).";
-  $("vote-history").appendChild(count);
+  container.appendChild(count);
+
+  const participationTitle=document.createElement("strong");
+  participationTitle.textContent="Dernières participations aux plateformes externes";
+  container.appendChild(participationTitle);
+
+  if(data.participations&&data.participations.length){
+   const participationList=document.createElement("ul");
+   participationList.style.paddingLeft="20px";
+   data.participations.forEach(entry=>{
+    const item=document.createElement("li");
+    item.textContent=entry.source+" — page ouverte le "+formatDate(entry.last_opened_at);
+    participationList.appendChild(item);
+   });
+   container.appendChild(participationList);
+  }else{
+   const empty=document.createElement("p");
+   empty.textContent="Aucune participation externe enregistrée.";
+   container.appendChild(empty);
+  }
  }catch(error){
   $("vote-history").textContent=error.message||"Impossible de charger ton historique.";
  }
@@ -105,6 +135,7 @@ async function loadAccount(){
   $("sp-pseudo").value=accountUsername;
   $("sp-pseudo").readOnly=true;
   await loadHistory();
+  await loadExternalCooldowns();
   return true;
  }catch(error){
   $("vote-account-message").textContent="Ta session a expiré. Reconnecte-toi à ton compte War Contry pour voter.";
@@ -148,21 +179,106 @@ async function checkVote(){
  }
 }
 
+const EXTERNAL_SOURCES = ["planet-minecraft","serveur-minecraft","minecraft-ip-list"];
+
+function formatRemaining(seconds){
+ const value=Math.max(0,Number(seconds)||0);
+ const hours=Math.floor(value/3600);
+ const minutes=Math.floor((value%3600)/60);
+ const secs=value%60;
+ if(hours>0) return hours+" h "+minutes+" min";
+ if(minutes>0) return minutes+" min "+secs+" s";
+ return secs+" s";
+}
+
+function updateExternalButtons(){
+ document.querySelectorAll(".external-vote-form").forEach(form=>{
+  const source=form.dataset.platform;
+  const button=form.querySelector("button");
+  const status=form.parentElement.querySelector(".external-status");
+  const until=Number(form.dataset.cooldownUntil||0);
+  const remaining=Math.max(0,until-Math.floor(Date.now()/1000));
+  button.disabled=remaining>0;
+  if(remaining>0){
+   button.textContent="Disponible dans "+formatRemaining(remaining);
+   status.textContent="Prochaine participation possible dans "+formatRemaining(remaining)+".";
+  }else{
+   button.textContent="Ouvrir et participer ↗";
+   if(form.dataset.cooldownLoaded==="yes") status.textContent="Tu peux ouvrir cette plateforme.";
+  }
+ });
+}
+
+async function loadExternalCooldowns(){
+ await Promise.all(EXTERNAL_SOURCES.map(async source=>{
+  const form=document.querySelector('.external-vote-form[data-platform="'+source+'"]');
+  if(!form) return;
+  try{
+   const response=await fetch(API_BASE+"/external/status?source="+encodeURIComponent(source),{
+    headers:authHeaders(),cache:"no-store"
+   });
+   const data=await response.json();
+   if(!response.ok||!data.ok) throw new Error(data.error||"Délai indisponible.");
+   form.dataset.cooldownUntil=String(data.next_available_at||0);
+   form.dataset.cooldownLoaded="yes";
+  }catch(error){
+   const button=form.querySelector("button");
+   button.disabled=true;
+   form.parentElement.querySelector(".external-status").textContent="Impossible de vérifier le délai. Actualise la page.";
+  }
+ }));
+ updateExternalButtons();
+ if(!externalCountdownHandle) externalCountdownHandle=setInterval(updateExternalButtons,1000);
+}
+
 document.querySelectorAll(".external-vote-form").forEach(form=>{
- form.addEventListener("submit",event=>{
+ form.addEventListener("submit",async event=>{
   event.preventDefault();
+  const status=form.parentElement.querySelector(".external-status");
+  const button=form.querySelector("button");
   if(!accountToken||!accountUsername){
-   form.parentElement.querySelector(".external-status").textContent="Connecte-toi à ton compte War Contry pour voter.";
+   status.textContent="Connecte-toi à ton compte War Contry pour participer.";
    return;
   }
-  const voteWindow=window.open(form.dataset.url,"_blank");
-  const status=form.parentElement.querySelector(".external-status");
+
+  const voteWindow=window.open("about:blank","_blank");
   if(!voteWindow){
    status.textContent="Le navigateur a bloqué l’ouverture. Autorise les fenêtres pop-up puis réessaie.";
    return;
   }
   voteWindow.opener=null;
-  status.textContent="La page partenaire est ouverte pour "+accountUsername+". Attention : cette plateforme ne fournit pas de confirmation automatique à War Contry ; ce vote n'est donc pas ajouté à l'historique.";
+  button.disabled=true;
+
+  try{
+   const response=await fetch(API_BASE+"/external/start",{
+    method:"POST",
+    headers:authHeaders({"Content-Type":"application/json"}),
+    body:JSON.stringify({source:form.dataset.platform})
+   });
+   const data=await response.json();
+   if(!response.ok||!data.ok){
+    voteWindow.close();
+    if(data.next_available_at){
+     form.dataset.cooldownUntil=String(data.next_available_at);
+     form.dataset.cooldownLoaded="yes";
+     updateExternalButtons();
+    }
+    throw new Error(data.error||"Impossible d’ouvrir cette plateforme.");
+   }
+
+   form.dataset.cooldownUntil=String(data.next_available_at);
+   form.dataset.cooldownLoaded="yes";
+   voteWindow.location.href=form.dataset.url;
+   status.textContent="La page partenaire a été ouverte. Merci de soutenir War Contry !";
+   updateExternalButtons();
+   setTimeout(()=>{
+    status.textContent="Merci pour ta participation à War Contry !";
+   },12000);
+   await loadHistory();
+  }catch(error){
+   status.textContent=error.message||"Une erreur est survenue. Réessaie plus tard.";
+   updateExternalButtons();
+  }
  });
 });
 
