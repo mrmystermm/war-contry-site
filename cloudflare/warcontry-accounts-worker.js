@@ -219,6 +219,22 @@ async function handle(request, env) {
       if (!account) return json({ ok: false, error: "Session expirée. Reconnecte-toi." }, 401, cors);
       return json({ ok: true, account }, 200, cors);
     }
+    if (route === "/preferences" && (request.method === "GET" || request.method === "PUT")) {
+      const account = await authenticatedAccount(request, env);
+      if (!account) return json({ ok: false, error: "Session expirée. Reconnecte-toi." }, 401, cors);
+      if (request.method === "GET") {
+        const preferences = await env.DB.prepare("SELECT language, theme FROM account_preferences WHERE account_id = ?").bind(account.id).first();
+        return json({ ok: true, preferences: { language: preferences?.language || "fr", theme: preferences?.theme || "dark" } }, 200, cors);
+      }
+      const data = await readJson(request);
+      const language = String(data.language || "");
+      const theme = String(data.theme || "");
+      if (!["fr", "en"].includes(language)) return json({ ok: false, error: "Langue non prise en charge." }, 400, cors);
+      if (!["dark", "light"].includes(theme)) return json({ ok: false, error: "Thème non pris en charge." }, 400, cors);
+      await env.DB.prepare("INSERT INTO account_preferences (account_id, language, theme, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(account_id) DO UPDATE SET language = excluded.language, theme = excluded.theme, updated_at = excluded.updated_at")
+        .bind(account.id, language, theme, now()).run();
+      return json({ ok: true, preferences: { language, theme }, message: "Préférences enregistrées." }, 200, cors);
+    }
     if (route === "/logout" && request.method === "POST") {
       const header = request.headers.get("Authorization") || "";
       const token = header.startsWith("Bearer ") ? header.slice(7) : "";
