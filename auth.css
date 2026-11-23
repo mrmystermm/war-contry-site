@@ -1,2 +1,30 @@
 :root{color-scheme:dark;--gold:#e8c46b;--panel:#101b2c;--line:#29384d;--muted:#9ba9bc}*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 50% 0,#182944,#060d1a 65%);font-family:Arial,sans-serif;color:#f5f7fb}.auth-nav{height:76px;border-bottom:1px solid #26364a;background:#081321dd;display:flex;align-items:center;justify-content:space-between;padding:0 max(22px,calc((100% - 1080px)/2))}.brand{color:var(--gold);font-weight:800;letter-spacing:2px;text-decoration:none}.auth-nav a:last-child{color:var(--gold);text-decoration:none}.auth-wrap{width:min(460px,calc(100% - 32px));margin:64px auto}.auth-card{background:var(--panel);border:1px solid #2b3c52;border-radius:18px;padding:30px;box-shadow:0 20px 60px #0006}.eyebrow{color:var(--gold);font-size:12px;letter-spacing:2px;text-transform:uppercase}.auth-card h1{font-family:Georgia,serif;font-size:32px;margin:10px 0}.auth-card p{color:#b8c4d4;line-height:1.55}.field{display:block;margin:18px 0}.field span{display:block;font-size:13px;color:#d7dfeb;margin-bottom:8px}.field input{width:100%;padding:13px;border-radius:9px;border:1px solid #35465c;background:#091422;color:white;font-size:15px}.primary{width:100%;border:0;border-radius:9px;padding:13px;background:linear-gradient(#f5d88d,#c89b45);color:#251b08;font-weight:800;cursor:pointer;font-size:15px}.auth-links{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:18px}.auth-links a{color:var(--gold);font-size:13px;text-decoration:none}.notice{margin-top:16px;padding:12px;border-radius:9px;background:#0a1422;color:#dce5f1;font-size:14px;line-height:1.5}.notice.error{color:#ffb4b4;border:1px solid #743c45}.notice.ok{color:#8de0a7;border:1px solid #285d3b}footer{text-align:center;color:#77869b;padding:28px;font-size:12px}@media(max-width:480px){.auth-card{padding:22px}.auth-wrap{margin:36px auto}}
 .field-help{display:block;margin-top:7px;color:#91a0b4;font-size:11px;line-height:1.45}
+
+/* Paramètres du compte */
+.settings-wrap{width:min(1060px,calc(100% - 32px));margin:42px auto 64px}
+.settings-layout{display:grid;grid-template-columns:240px minmax(0,1fr);gap:22px;align-items:start}
+.settings-side{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px;display:grid;gap:5px}
+.settings-side a{display:block;padding:12px 13px;border-radius:9px;color:#d7dfeb;text-decoration:none;font-size:14px}
+.settings-side a:hover,.settings-side a.active{background:#e8c46b18;color:var(--gold)}
+.settings-main{min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:28px}
+.settings-main h1{margin:0 0 8px;font-family:Georgia,serif;font-size:30px}
+.settings-main h2{color:var(--gold);font-size:18px;margin:24px 0 8px}
+.settings-main p{color:#b8c4d4;line-height:1.6}
+.setting-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:17px 0;border-bottom:1px solid var(--line)}
+.setting-row:last-child{border-bottom:0}
+.setting-row strong{display:block;color:#f5f7fb}
+.setting-row small{display:block;color:#9ba9bc;margin-top:4px}
+.setting-link{color:var(--gold);text-decoration:none;white-space:nowrap}
+.setting-select{max-width:220px;width:100%;padding:11px;border-radius:9px;border:1px solid #35465c;background:#091422;color:white}
+.danger-zone{border:1px solid #9a414b;background:#431c2522;border-radius:12px;padding:18px;margin-top:22px}
+.danger-zone h2{color:#ff9da5;margin-top:0}
+:root[data-theme="light"]{color-scheme:light;--panel:#fff;--line:#d7dfeb;--muted:#536174}
+:root[data-theme="light"] body{background:#eef2f7;color:#172235}
+:root[data-theme="light"] .auth-nav{background:#fff;border-color:#d7dfeb}
+:root[data-theme="light"] .auth-nav a:last-child,:root[data-theme="light"] .brand{color:#8a641c}
+:root[data-theme="light"] .auth-card,:root[data-theme="light"] .settings-side,:root[data-theme="light"] .settings-main{background:#fff;border-color:#d7dfeb;color:#172235}
+:root[data-theme="light"] .auth-card p,:root[data-theme="light"] .settings-main p{color:#536174}
+:root[data-theme="light"] .setting-row strong{color:#172235}
+:root[data-theme="light"] .setting-select{background:#fff;color:#172235;border-color:#c4cfdd}
+@media(max-width:700px){.settings-layout{grid-template-columns:1fr}.settings-side{grid-template-columns:repeat(2,minmax(0,1fr))}.settings-main{padding:22px}.setting-row{align-items:flex-start;flex-direction:column}}
