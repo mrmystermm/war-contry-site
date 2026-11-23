@@ -1,1 +1,24 @@
-<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#060d1a"><title>Zone sensible — War Contry</title><link rel="stylesheet" href="auth.css"></head><body><nav class="auth-nav"><a class="brand" href="index.html">WAR CONTRY</a><a href="mon-compte.html">← Mon compte</a></nav><main class="settings-wrap"><div class="settings-layout"><aside class="settings-side"><a href="mon-compte.html">👤 Compte</a><a href="langue.html">🌐 Langue</a><a href="apparence.html">🎨 Apparence</a><a href="securite.html">🔒 Sécurité</a><a class="active" href="zone-sensible.html">⚠️ Zone sensible</a></aside><section class="settings-main"><span class="eyebrow">Actions irréversibles</span><h1>Zone sensible</h1><div class="danger-zone"><h2>Supprimer mon compte</h2><p>La suppression définitive du compte sera irréversible. La procédure sécurisée de confirmation n'est pas encore disponible ; aucun compte ne peut être supprimé depuis cette page pour le moment.</p></div></section></div></main><footer>WAR CONTRY · Espace joueur</footer><script src="preferences.js"></script></body></html>
+<!doctype html>
+<html lang="fr">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#060d1a"><title>Zone sensible — War Contry</title><link rel="stylesheet" href="auth.css"></head>
+<body>
+<nav class="auth-nav"><a class="brand" href="index.html">WAR CONTRY</a><a href="mon-compte.html">← Mon compte</a></nav>
+<main class="settings-wrap"><div class="settings-layout">
+<aside class="settings-side"><a href="mon-compte.html">👤 Compte</a><a href="langue.html">🌐 Langue</a><a href="apparence.html">🎨 Apparence</a><a href="securite.html">🔒 Sécurité</a><a class="active" href="zone-sensible.html">⚠️ Zone sensible</a></aside>
+<section class="settings-main">
+<span class="eyebrow">Actions irréversibles</span><h1>Zone sensible</h1>
+<div class="danger-zone">
+<h2>Supprimer mon compte</h2>
+<p>Cette action supprimera définitivement ton compte War Contry. Elle est irréversible.</p>
+<p>Pour protéger ton compte, tu devras saisir ton mot de passe, écrire le mot <strong>SUPPRIMER</strong>, puis confirmer la demande depuis un lien envoyé à ton adresse e-mail actuelle. Le lien expire après une heure.</p>
+<form id="delete-account-form">
+<label class="field"><span>Mot de passe actuel</span><input id="delete-password" type="password" maxlength="128" autocomplete="current-password" required></label>
+<label class="field"><span>Écris exactement SUPPRIMER pour continuer</span><input id="delete-confirmation" type="text" maxlength="20" autocomplete="off" required></label>
+<label class="field"><input id="delete-acknowledge" type="checkbox" required> Je comprends que cette suppression est définitive.</label>
+<button class="primary" id="request-deletion" type="submit">Demander la suppression du compte</button>
+</form>
+<div id="notice" class="notice" role="status" aria-live="polite"></div>
+</div>
+</section></div></main><footer>WAR CONTRY · Espace joueur</footer>
+<script src="preferences.js"></script><script src="suppression-compte.js?v=1"></script>
+</body></html>
