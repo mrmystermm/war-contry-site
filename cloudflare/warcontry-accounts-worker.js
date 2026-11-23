@@ -162,7 +162,9 @@ async function handle(request, env) {
         env.DB.prepare("UPDATE accounts SET email_verified_at = ?, updated_at = ? WHERE id = ?").bind(timestamp, timestamp, row.account_id),
         env.DB.prepare("UPDATE email_verification_tokens SET used_at = ? WHERE token_hash = ?").bind(timestamp, hash)
       ]);
-      return json({ ok: true, message: "Adresse e-mail vérifiée ! Tu peux maintenant te connecter." }, 200, cors);
+      const account = await env.DB.prepare("SELECT id, email, username FROM accounts WHERE id = ?").bind(row.account_id).first();
+      const sessionToken = await createSession(env, row.account_id);
+      return json({ ok: true, token: sessionToken, account: { username: account.username, email: account.email }, message: "Adresse e-mail vérifiée ! Tu es maintenant connecté." }, 200, cors);
     }
     if (route === "/login" && request.method === "POST") {
       const data = await readJson(request);
