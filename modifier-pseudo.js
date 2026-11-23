@@ -54,10 +54,11 @@
         $("current-username").textContent = data.account.username;
         $("new-username").value = data.account.username;
         $("current-password").value = "";
-        show(data.message || "Ton pseudo a bien été modifié.", "ok");
+        show(data.message || "Ton pseudo a bien été modifié. Retour aux paramètres…", "ok");
+        button.disabled = true;
+        setTimeout(() => location.assign("mon-compte.html"), 1200);
       } catch (error) {
         show(error.message || "Une erreur est survenue. Réessaie.", "error");
-      } finally {
         button.disabled = false;
       }
     });
