@@ -219,6 +219,66 @@ async function handle(request, env) {
       if (!account) return json({ ok: false, error: "Session expirée. Reconnecte-toi." }, 401, cors);
       return json({ ok: true, account }, 200, cors);
     }
+    if (route === "/request-email-change" && request.method === "POST") {
+      const account = await authenticatedAccount(request, env);
+      if (!account) return json({ ok: false, error: "Session expirée. Reconnecte-toi." }, 401, cors);
+      if (!await rateLimit(env, "email-change:" + account.id, 3, 3600)) return json({ ok: false, error: "Trop de demandes. Réessaie dans une heure." }, 429, cors);
+      const data = await readJson(request);
+      const newEmail = String(data.email || "").trim().toLowerCase();
+      const currentPassword = String(data.currentPassword || "");
+      if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(newEmail) || newEmail.length > 254) return json({ ok: false, error: "Adresse e-mail invalide." }, 400, cors);
+      if (newEmail === String(account.email).toLowerCase()) return json({ ok: false, error: "Cette adresse est déjà celle de ton compte." }, 400, cors);
+      if (!currentPassword || currentPassword.length > 128) return json({ ok: false, error: "Saisis ton mot de passe actuel pour confirmer." }, 400, cors);
+      const credentials = await env.DB.prepare("SELECT password_hash FROM accounts WHERE id = ?").bind(account.id).first();
+      if (!credentials || !await verifyPassword(currentPassword, credentials.password_hash)) return json({ ok: false, error: "Mot de passe actuel incorrect." }, 401, cors);
+      const existing = await env.DB.prepare("SELECT id FROM accounts WHERE lower(email) = lower(?) AND id != ?").bind(newEmail, account.id).first();
+      if (existing) return json({ ok: false, error: "Cette adresse e-mail est déjà utilisée par un autre compte." }, 409, cors);
+      const timestamp = now();
+      const token = randomToken();
+      const tokenHash = await sha256(token);
+      await env.DB.batch([
+        env.DB.prepare("UPDATE email_change_tokens SET used_at = ? WHERE account_id = ? AND used_at IS NULL").bind(timestamp, account.id),
+        env.DB.prepare("INSERT INTO email_change_tokens (token_hash, account_id, new_email, expires_at, created_at) VALUES (?, ?, ?, ?, ?)").bind(tokenHash, account.id, newEmail, timestamp + 60 * 60, timestamp)
+      ]);
+      const link = siteUrl(env, "confirmer-changement-email.html") + "?token=" + encodeURIComponent(token);
+      try {
+        await sendEmail(env, newEmail, "Confirme ta nouvelle adresse e-mail — War Contry", emailTemplate("Confirme ta nouvelle adresse", "Une demande de modification de l’adresse e-mail de ton compte War Contry a été effectuée. Confirme la nouvelle adresse en cliquant sur le bouton ci-dessous. Le lien expire dans une heure.", "Confirmer ma nouvelle adresse", link));
+      } catch (error) {
+        await env.DB.prepare("UPDATE email_change_tokens SET used_at = ? WHERE token_hash = ?").bind(now(), tokenHash).run();
+        console.error("Email change confirmation failed", error.message);
+        return json({ ok: false, error: "L'e-mail de confirmation n'a pas pu être envoyé. Réessaie plus tard." }, 502, cors);
+      }
+      return json({ ok: true, message: "E-mail envoyé ! Clique sur le lien reçu à ta nouvelle adresse pour confirmer le changement. Ton ancienne adresse reste active jusque-là." }, 200, cors);
+    }
+    if (route === "/confirm-email-change" && request.method === "POST") {
+      const data = await readJson(request);
+      const token = String(data.token || "");
+      if (token.length < 20 || token.length > 200) return json({ ok: false, error: "Lien de confirmation invalide." }, 400, cors);
+      const tokenHash = await sha256(token);
+      const row = await env.DB.prepare("SELECT account_id, new_email, expires_at, used_at FROM email_change_tokens WHERE token_hash = ?").bind(tokenHash).first();
+      if (!row || row.used_at || row.expires_at < now()) return json({ ok: false, error: "Ce lien est invalide, déjà utilisé ou expiré." }, 400, cors);
+      const account = await env.DB.prepare("SELECT email, username FROM accounts WHERE id = ?").bind(row.account_id).first();
+      if (!account) return json({ ok: false, error: "Compte introuvable." }, 404, cors);
+      const existing = await env.DB.prepare("SELECT id FROM accounts WHERE lower(email) = lower(?) AND id != ?").bind(row.new_email, row.account_id).first();
+      if (existing) return json({ ok: false, error: "Cette adresse e-mail est déjà utilisée par un autre compte." }, 409, cors);
+      const timestamp = now();
+      try {
+        await env.DB.batch([
+          env.DB.prepare("UPDATE accounts SET email = ?, email_verified_at = ?, updated_at = ? WHERE id = ?").bind(row.new_email, timestamp, timestamp, row.account_id),
+          env.DB.prepare("UPDATE email_change_tokens SET used_at = ? WHERE token_hash = ? AND used_at IS NULL").bind(timestamp, tokenHash),
+          env.DB.prepare("UPDATE email_change_tokens SET used_at = ? WHERE account_id = ? AND used_at IS NULL").bind(timestamp, row.account_id)
+        ]);
+      } catch (error) {
+        console.error("Email change database update failed", error);
+        return json({ ok: false, error: "Impossible de modifier l'adresse. Vérifie qu'elle n'est pas déjà utilisée." }, 409, cors);
+      }
+      try {
+        await sendEmail(env, account.email, "Adresse e-mail de ton compte War Contry modifiée", emailTemplate("Adresse e-mail modifiée", "L’adresse e-mail de ton compte War Contry vient d’être remplacée par " + escapeHtml(row.new_email) + ". Si tu n’es pas à l’origine de cette modification, contacte l’équipe War Contry.", "Ouvrir War Contry", siteUrl(env, "mon-compte.html")));
+      } catch (error) {
+        console.error("Old email notification failed", error.message);
+      }
+      return json({ ok: true, account: { username: account.username, email: row.new_email }, message: "Ton adresse e-mail a bien été modifiée." }, 200, cors);
+    }
     if (route === "/username" && request.method === "PUT") {
       const account = await authenticatedAccount(request, env);
       if (!account) return json({ ok: false, error: "Session expirée. Reconnecte-toi." }, 401, cors);
