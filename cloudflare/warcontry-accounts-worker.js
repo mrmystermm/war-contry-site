@@ -219,6 +219,26 @@ async function handle(request, env) {
       if (!account) return json({ ok: false, error: "Session expirée. Reconnecte-toi." }, 401, cors);
       return json({ ok: true, account }, 200, cors);
     }
+    if (route === "/username" && request.method === "PUT") {
+      const account = await authenticatedAccount(request, env);
+      if (!account) return json({ ok: false, error: "Session expirée. Reconnecte-toi." }, 401, cors);
+      if (!await rateLimit(env, "username:" + account.id, 5, 3600)) return json({ ok: false, error: "Trop de tentatives. Réessaie dans une heure." }, 429, cors);
+      const data = await readJson(request);
+      const username = String(data.username || "").trim();
+      const currentPassword = String(data.currentPassword || "");
+      if (!/^[A-Za-z0-9_]{3,16}$/.test(username)) return json({ ok: false, error: "Le pseudo doit contenir de 3 à 16 lettres, chiffres ou underscores." }, 400, cors);
+      if (!currentPassword || currentPassword.length > 128) return json({ ok: false, error: "Saisis ton mot de passe actuel pour confirmer." }, 400, cors);
+      const credentials = await env.DB.prepare("SELECT password_hash FROM accounts WHERE id = ?").bind(account.id).first();
+      if (!credentials || !await verifyPassword(currentPassword, credentials.password_hash)) return json({ ok: false, error: "Mot de passe actuel incorrect." }, 401, cors);
+      const existing = await env.DB.prepare("SELECT id FROM accounts WHERE lower(username) = lower(?) AND id != ?").bind(username, account.id).first();
+      if (existing) return json({ ok: false, error: "Ce pseudo est déjà utilisé." }, 409, cors);
+      try {
+        await env.DB.prepare("UPDATE accounts SET username = ?, updated_at = ? WHERE id = ?").bind(username, now(), account.id).run();
+      } catch {
+        return json({ ok: false, error: "Ce pseudo est déjà utilisé." }, 409, cors);
+      }
+      return json({ ok: true, account: { username, email: account.email }, message: "Ton pseudo a bien été modifié." }, 200, cors);
+    }
     if (route === "/preferences" && (request.method === "GET" || request.method === "PUT")) {
       const account = await authenticatedAccount(request, env);
       if (!account) return json({ ok: false, error: "Session expirée. Reconnecte-toi." }, 401, cors);
