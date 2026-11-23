@@ -39,7 +39,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  }
  const bind=(id,path,payload,done)=>{const f=$(id);if(!f)return;f.addEventListener("submit",async e=>{e.preventDefault();show("Traitement en cours…");try{const d=await call(path,payload());show(d.message||"Opération réussie.","ok");if(done)done(d)}catch(x){show(x.message,"error")}})};
  bind("register-form","/register",()=>({username:$("username").value,email:$("email").value,password:$("password").value}),async d=>{const email=$("email").value.trim();const message=d.message||"E-mail envoyé ! Vérifie ta boîte mail.";show(message,"ok");if(message.includes("n'a pas pu être envoyé"))return;const form=$("register-form");if(form){const button=form.querySelector("button");if(button){button.disabled=true;button.textContent="Redirection vers la connexion…"}}window.setTimeout(()=>{const target=new URL("./connexion.html",window.location.href);target.searchParams.set("inscription","envoyee");target.searchParams.set("email",email);window.location.replace(target.href)},4500)});
- bind("login-form","/login",()=>({email:$("email").value,password:$("password").value}),d=>{localStorage.setItem("wc_account_token",d.token);location.href="mon-compte.html"});
+ bind("login-form","/login",()=>({email:$("email").value,password:$("password").value}),d=>{if(d.requires2FA){location.href="code-connexion.html?challenge="+encodeURIComponent(d.challengeId);return}localStorage.setItem("wc_account_token",d.token);location.href="mon-compte.html"});
  bind("forgot-form","/forgot-password",()=>({email:$("email").value}),()=> $("forgot-form").reset());
  bind("reset-form","/reset-password",()=>({token:token(),password:$("password").value}),()=> $("reset-form").reset());
  const v=$("verify-action");
