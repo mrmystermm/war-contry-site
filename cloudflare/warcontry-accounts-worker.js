@@ -242,13 +242,13 @@ async function handle(request, env) {
       ]);
       const link = siteUrl(env, "confirmer-changement-email.html") + "?token=" + encodeURIComponent(token);
       try {
-        await sendEmail(env, newEmail, "Confirme ta nouvelle adresse e-mail — War Contry", emailTemplate("Confirme ta nouvelle adresse", "Une demande de modification de l’adresse e-mail de ton compte War Contry a été effectuée. Confirme la nouvelle adresse en cliquant sur le bouton ci-dessous. Le lien expire dans une heure.", "Confirmer ma nouvelle adresse", link));
+        await sendEmail(env, account.email, "Confirme le changement d'adresse e-mail — War Contry", emailTemplate("Confirme le changement d'adresse", "Une demande de remplacement de ton adresse e-mail par " + escapeHtml(newEmail) + " a été effectuée sur ton compte War Contry. Si tu es à l'origine de cette demande, confirme-la en cliquant sur le bouton ci-dessous. Ta nouvelle adresse ne sera activée qu'après ce clic. Le lien expire dans une heure.", "Confirmer le changement", link));
       } catch (error) {
         await env.DB.prepare("UPDATE email_change_tokens SET used_at = ? WHERE token_hash = ?").bind(now(), tokenHash).run();
         console.error("Email change confirmation failed", error.message);
         return json({ ok: false, error: "L'e-mail de confirmation n'a pas pu être envoyé. Réessaie plus tard." }, 502, cors);
       }
-      return json({ ok: true, message: "E-mail envoyé ! Clique sur le lien reçu à ta nouvelle adresse pour confirmer le changement. Ton ancienne adresse reste active jusque-là." }, 200, cors);
+      return json({ ok: true, message: "Un lien de confirmation a été envoyé à ton adresse e-mail actuelle. Ton adresse ne changera qu'après avoir cliqué sur ce lien." }, 200, cors);
     }
     if (route === "/confirm-email-change" && request.method === "POST") {
       const data = await readJson(request);
