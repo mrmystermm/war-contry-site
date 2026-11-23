@@ -6,7 +6,9 @@ CREATE TABLE IF NOT EXISTS sp_vote_sessions (
   status TEXT NOT NULL CHECK (status IN ('pending', 'confirmed', 'expired')),
   created_at INTEGER NOT NULL,
   voted_at INTEGER,
-  next_vote_seconds INTEGER
+  next_vote_seconds INTEGER,
+  baseline_voted_at INTEGER NOT NULL DEFAULT 0,
+  account_id TEXT
 );
 
 CREATE TABLE IF NOT EXISTS sp_votes (
