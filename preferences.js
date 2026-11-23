@@ -37,6 +37,7 @@
     "Protection":"Protection",
     "Sécurité":"Security",
     "Réinitialise ton mot de passe avec ton adresse e-mail.":"Reset your password using your email address.",
+    "Modifie ton mot de passe directement depuis ton compte. Ton mot de passe actuel sera demandé.":"Change your password directly from your account. Your current password will be required.",
     "Changer →":"Change →",
     "Authentification à deux facteurs (A2F)":"Two-factor authentication (2FA)",
     "Cette fonctionnalité n'est pas encore activée.":"This feature is not available yet.",
