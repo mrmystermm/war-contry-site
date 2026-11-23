@@ -40,6 +40,17 @@
     "Changer →":"Change →",
     "Authentification à deux facteurs (A2F)":"Two-factor authentication (2FA)",
     "Cette fonctionnalité n'est pas encore activée.":"This feature is not available yet.",
+    "Changer mon mot de passe":"Change my password",
+    "Choisis un nouveau mot de passe pour ton compte War Contry. Il doit contenir entre 12 et 128 caractères.":"Choose a new password for your War Contry account. It must be between 12 and 128 characters.",
+    "Nouveau mot de passe":"New password",
+    "Confirmer le nouveau mot de passe":"Confirm new password",
+    "Enregistrer le nouveau mot de passe":"Save new password",
+    "Retour à la sécurité":"Back to security",
+    "Modification en cours…":"Updating…",
+    "Les deux nouveaux mots de passe ne correspondent pas.":"The two new passwords do not match.",
+    "Le nouveau mot de passe doit contenir entre 12 et 128 caractères.":"The new password must be between 12 and 128 characters.",
+    "Ton mot de passe a été modifié. Les autres appareils ont été déconnectés.":"Your password has been changed. Other devices have been signed out.",
+    "Les autres appareils ont été déconnectés.":"Other devices have been signed out.",
     "Bientôt disponible":"Coming soon",
     "Actions irréversibles":"Irreversible actions",
     "Zone sensible":"Danger zone",
@@ -215,7 +226,8 @@
           "Zone sensible — War Contry":"Danger zone — War Contry",
           "Modifier mon pseudo — War Contry":"Change my username — War Contry",
           "Confirmer la nouvelle adresse — War Contry":"Confirm new email address — War Contry",
-          "Modifier mon adresse e-mail — War Contry":"Change my email address — War Contry"
+          "Modifier mon adresse e-mail — War Contry":"Change my email address — War Contry",
+          "Changer mon mot de passe — War Contry":"Change my password — War Contry"
         };
         const titleMap = language === "en" ? titles : Object.fromEntries(Object.entries(titles).map(([fr,en]) => [en,fr]));
         if (titleMap[document.title]) document.title = titleMap[document.title];
