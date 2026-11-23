@@ -240,7 +240,7 @@ async function handle(request, env) {
         env.DB.prepare("UPDATE email_change_tokens SET used_at = ? WHERE account_id = ? AND used_at IS NULL").bind(timestamp, account.id),
         env.DB.prepare("INSERT INTO email_change_tokens (token_hash, account_id, new_email, expires_at, created_at) VALUES (?, ?, ?, ?, ?)").bind(tokenHash, account.id, newEmail, timestamp + 60 * 60, timestamp)
       ]);
-      const link = siteUrl(env, "confirmer-changement-email.html") + "?token=" + encodeURIComponent(token);
+      const link = siteUrl(env, "verifier-email.html") + "?mode=email-change" + "?token=" + encodeURIComponent(token);
       try {
         await sendEmail(env, account.email, "Confirme le changement d'adresse e-mail — War Contry", emailTemplate("Confirme le changement d'adresse", "Une demande de remplacement de ton adresse e-mail par " + escapeHtml(newEmail) + " a été effectuée sur ton compte War Contry. Si tu es à l'origine de cette demande, confirme-la en cliquant sur le bouton ci-dessous. Ta nouvelle adresse ne sera activée qu'après ce clic. Le lien expire dans une heure.", "Confirmer le changement", link));
       } catch (error) {
