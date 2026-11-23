@@ -1,4 +1,16 @@
 <!doctype html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#060d1a"><title>Modifier mon pseudo — War Contry</title><link rel="stylesheet" href="auth.css"></head>
 <body><nav class="auth-nav"><a class="brand" href="index.html">WAR CONTRY</a><a href="mon-compte.html">← Mon compte</a></nav>
-<main class="auth-wrap"><section class="auth-card"><span class="eyebrow">Paramètres du compte</span><h1>Modifier mon pseudo</h1><p>La modification du pseudo devra être vérifiée pour éviter les doublons et protéger ton compte.</p><div class="notice">Cette modification sera activée dans une prochaine étape. Aucune donnée de ton compte ne sera modifiée depuis cette page pour le moment.</div><div class="auth-links"><a href="mon-compte.html">Retour à mon compte</a></div></section></main><footer>WAR CONTRY · Espace joueur</footer><script src="preferences.js"></script></body></html>
+<main class="auth-wrap"><section class="auth-card">
+<span class="eyebrow">Paramètres du compte</span><h1>Modifier mon pseudo</h1>
+<p>Ton pseudo actuel : <strong id="current-username">Chargement…</strong></p>
+<p>Choisis un pseudo de 3 à 16 caractères. Seules les lettres, les chiffres et les underscores (_) sont acceptés.</p>
+<form id="username-form">
+<label class="field"><span>Nouveau pseudo</span><input id="new-username" type="text" minlength="3" maxlength="16" pattern="[A-Za-z0-9_]{3,16}" autocomplete="username" required></label>
+<label class="field"><span>Mot de passe actuel</span><input id="current-password" type="password" maxlength="128" autocomplete="current-password" required></label>
+<button class="primary" id="save-username" type="submit">Enregistrer le nouveau pseudo</button>
+</form>
+<div id="notice" class="notice" role="status" aria-live="polite"></div>
+<div class="auth-links"><a href="mon-compte.html">Retour à mon compte</a></div>
+</section></main><footer>WAR CONTRY · Espace joueur</footer>
+<script src="preferences.js"></script><script src="modifier-pseudo.js"></script></body></html>
