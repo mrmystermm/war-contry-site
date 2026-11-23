@@ -3,23 +3,31 @@ const $=id=>document.getElementById(id);
 function show(message,type=""){const e=$("notice");if(e){e.textContent=message;e.className="notice "+type}}
 async function call(path,data){const r=await fetch(API+path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});const d=await r.json().catch(()=>({}));if(!r.ok||!d.ok)throw Error(d.error||"Une erreur est survenue.");return d}
 const token=()=>new URLSearchParams(location.search).get("token")||"";
+let registrationCheckRunning=false;
 async function refreshRegistrationState(){
  const form=$("register-form");
  const connected=$("register-connected");
- if(!form||!connected)return;
+ if(!form||!connected||registrationCheckRunning)return;
  const savedToken=localStorage.getItem("wc_account_token");
  if(!savedToken)return;
+ registrationCheckRunning=true;
  try{
   const response=await fetch(API+"/me",{headers:{Authorization:"Bearer "+savedToken},cache:"no-store"});
-  const data=await response.json();
-  if(!response.ok||!data.ok)throw new Error("Session expirée");
+  const data=await response.json().catch(()=>({}));
+  if(response.status===401||response.status===403||!data.ok){
+   localStorage.removeItem("wc_account_token");
+   return;
+  }
+  if(!response.ok)throw new Error("Vérification de session indisponible");
   form.hidden=true;
   connected.hidden=false;
   const links=document.querySelector(".auth-links");
   if(links)links.hidden=true;
   show("Adresse e-mail vérifiée : ton compte est maintenant actif et connecté.","ok");
  }catch(error){
-  localStorage.removeItem("wc_account_token");
+  // Une erreur réseau temporaire ne doit pas supprimer la session enregistrée.
+ }finally{
+  registrationCheckRunning=false;
  }
 }
 document.addEventListener("DOMContentLoaded",()=>{
@@ -47,6 +55,13 @@ document.addEventListener("DOMContentLoaded",()=>{
  refreshRegistrationState();
  window.addEventListener("storage",event=>{
   if(event.key==="wc_account_token")refreshRegistrationState();
+ });
+ // Quand l'utilisateur revient sur l'onglet d'inscription après avoir fermé
+ // l'onglet de vérification, on contrôle immédiatement sa session.
+ window.addEventListener("focus",refreshRegistrationState);
+ window.addEventListener("pageshow",refreshRegistrationState);
+ document.addEventListener("visibilitychange",()=>{
+  if(!document.hidden)refreshRegistrationState();
  });
  const info=$("account-details");if(info){const t=localStorage.getItem("wc_account_token");if(!t){location.href="connexion.html";return}fetch(API+"/me",{headers:{Authorization:"Bearer "+t}}).then(r=>r.json()).then(d=>{if(!d.ok)throw Error();$("account-name").textContent=d.account.username;$("account-email").textContent=d.account.email}).catch(()=>{localStorage.removeItem("wc_account_token");location.href="connexion.html"})}
  const out=$("logout");if(out)out.addEventListener("click",async()=>{const t=localStorage.getItem("wc_account_token");try{await fetch(API+"/logout",{method:"POST",headers:{Authorization:"Bearer "+t,"Content-Type":"application/json"},body:"{}"})}finally{localStorage.removeItem("wc_account_token");location.href="connexion.html"}});
