@@ -145,44 +145,65 @@
     "Vérification impossible.":"Verification failed.",
     "Impossible de préparer le vote.":"Unable to prepare the vote."
   };
+  let translationRun = 0;
   function translate(language) {
+    const run = ++translationRun;
     const dictionary = language === "en" ? EN : Object.fromEntries(Object.entries(EN).map(([fr,en]) => [en,fr]));
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-    let node;
-    while ((node = walker.nextNode())) {
-      const original = node.nodeValue;
-      const trimmed = original.trim();
-      if (!trimmed || !dictionary[trimmed]) continue;
-      node.nodeValue = original.replace(trimmed, dictionary[trimmed]);
-    }
-    document.querySelectorAll("select option").forEach(option => {
-      const label = option.textContent.trim();
-      if (dictionary[label]) option.textContent = dictionary[label];
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+      acceptNode(node) {
+        const parent = node.parentElement;
+        if (!parent || parent.closest("script,style,noscript,textarea")) return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
+      }
     });
-    const titles = {
-      "War Contry — Événement de Noël 2026":"War Contry — Christmas Event 2026",
-      "War Contry — Calendrier de l'Avent 2026":"War Contry — Advent Calendar 2026",
-      "War Contry — Votes":"War Contry — Votes",
-      "Mon compte — War Contry":"My account — War Contry",
-      "Langue — War Contry":"Language — War Contry",
-      "Apparence — War Contry":"Appearance — War Contry",
-      "Sécurité — War Contry":"Security — War Contry",
-      "Zone sensible — War Contry":"Danger zone — War Contry",
-      "Modifier mon pseudo — War Contry":"Change my username — War Contry",
-      "Modifier mon adresse e-mail — War Contry":"Change my email address — War Contry"
-    };
-    const titleMap = language === "en" ? titles : Object.fromEntries(Object.entries(titles).map(([fr,en]) => [en,fr]));
-    if (titleMap[document.title]) document.title = titleMap[document.title];
-    const description = document.querySelector('meta[name="description"]');
-    if (description) {
-      const descriptions = {
-        "Concours de décoration, calendrier de l'Avent, mini-jeux et récompenses : le grand événement de Noël de War Contry démarre le 28 novembre 2026.":"Decoration contests, an Advent calendar, mini-games and rewards: War Contry's big Christmas event starts on November 28, 2026.",
-        "Ouvre une case par jour du 1er au 24 décembre 2026 sur War Contry.":"Open one tile per day from December 1 to 24, 2026 on War Contry.",
-        "Vote pour War Contry et soutiens le serveur.":"Vote for War Contry and support the server."
-      };
-      const descriptionMap = language === "en" ? descriptions : Object.fromEntries(Object.entries(descriptions).map(([fr,en]) => [en,fr]));
-      if (descriptionMap[description.content]) description.content = descriptionMap[description.content];
+    const nodes = [];
+    let node;
+    while ((node = walker.nextNode())) nodes.push(node);
+    let index = 0;
+    function processChunk() {
+      if (run !== translationRun) return;
+      const stop = Math.min(index + 35, nodes.length);
+      for (; index < stop; index++) {
+        const current = nodes[index];
+        const original = current.nodeValue;
+        const trimmed = original.trim();
+        if (!trimmed || !dictionary[trimmed]) continue;
+        current.nodeValue = original.replace(trimmed, dictionary[trimmed]);
+      }
+      if (index < nodes.length) {
+        requestAnimationFrame(processChunk);
+      } else {
+        document.querySelectorAll("select option").forEach(option => {
+          const label = option.textContent.trim();
+          if (dictionary[label]) option.textContent = dictionary[label];
+        });
+        const titles = {
+          "War Contry — Événement de Noël 2026":"War Contry — Christmas Event 2026",
+          "War Contry — Calendrier de l'Avent 2026":"War Contry — Advent Calendar 2026",
+          "War Contry — Votes":"War Contry — Votes",
+          "Mon compte — War Contry":"My account — War Contry",
+          "Langue — War Contry":"Language — War Contry",
+          "Apparence — War Contry":"Appearance — War Contry",
+          "Sécurité — War Contry":"Security — War Contry",
+          "Zone sensible — War Contry":"Danger zone — War Contry",
+          "Modifier mon pseudo — War Contry":"Change my username — War Contry",
+          "Modifier mon adresse e-mail — War Contry":"Change my email address — War Contry"
+        };
+        const titleMap = language === "en" ? titles : Object.fromEntries(Object.entries(titles).map(([fr,en]) => [en,fr]));
+        if (titleMap[document.title]) document.title = titleMap[document.title];
+        const description = document.querySelector('meta[name="description"]');
+        if (description) {
+          const descriptions = {
+            "Concours de décoration, calendrier de l'Avent, mini-jeux et récompenses : le grand événement de Noël de War Contry démarre le 28 novembre 2026.":"Decoration contests, an Advent calendar, mini-games and rewards: War Contry's big Christmas event starts on November 28, 2026.",
+            "Ouvre une case par jour du 1er au 24 décembre 2026 sur War Contry.":"Open one tile per day from December 1 to 24, 2026 on War Contry.",
+            "Vote pour War Contry et soutiens le serveur.":"Vote for War Contry and support the server."
+          };
+          const descriptionMap = language === "en" ? descriptions : Object.fromEntries(Object.entries(descriptions).map(([fr,en]) => [en,fr]));
+          if (descriptionMap[description.content]) description.content = descriptionMap[description.content];
+        }
+      }
     }
+    processChunk();
   }
   window.wcApplyLanguage = translate;
   const token = localStorage.getItem("wc_account_token");
