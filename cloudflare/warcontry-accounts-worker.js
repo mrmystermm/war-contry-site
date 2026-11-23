@@ -333,6 +333,81 @@ async function handle(request, env) {
       }
       return json({ ok: true, message: "Ton mot de passe a été modifié. Les autres appareils ont été déconnectés." }, 200, cors);
     }
+    if (route === "/request-account-deletion" && request.method === "POST") {
+      const account = await authenticatedAccount(request, env);
+      if (!account) return json({ ok: false, error: "Session expirée. Reconnecte-toi." }, 401, cors);
+      if (!await rateLimit(env, "account-delete:" + account.id, 3, 86400)) return json({ ok: false, error: "Trop de demandes de suppression. Réessaie demain." }, 429, cors);
+      const data = await readJson(request);
+      const password = String(data.password || "");
+      const confirmation = String(data.confirmation || "");
+      if (!password || password.length > 128) return json({ ok: false, error: "Saisis ton mot de passe actuel." }, 400, cors);
+      if (confirmation !== "SUPPRIMER") return json({ ok: false, error: "Saisis exactement SUPPRIMER pour confirmer ta demande." }, 400, cors);
+      const credentials = await env.DB.prepare("SELECT password_hash FROM accounts WHERE id = ?").bind(account.id).first();
+      if (!credentials || !await verifyPassword(password, credentials.password_hash)) return json({ ok: false, error: "Mot de passe actuel incorrect." }, 401, cors);
+      const timestamp = now();
+      const token = randomToken();
+      const tokenHash = await sha256(token);
+      await env.DB.batch([
+        env.DB.prepare("UPDATE account_deletion_tokens SET used_at = ? WHERE account_id = ? AND used_at IS NULL").bind(timestamp, account.id),
+        env.DB.prepare("INSERT INTO account_deletion_tokens (token_hash, account_id, expires_at, created_at) VALUES (?, ?, ?, ?)").bind(tokenHash, account.id, timestamp + 60 * 60, timestamp)
+      ]);
+      const link = siteUrl(env, "confirmer-suppression-compte.html") + "?token=" + encodeURIComponent(token);
+      try {
+        await sendEmail(env, account.email, "Confirme la suppression de ton compte — War Contry", emailTemplate(
+          "Confirme la suppression de ton compte",
+          "Une demande de suppression définitive a été effectuée pour le compte " + escapeHtml(account.username) + ". Si tu es à l'origine de cette demande, ouvre le lien ci-dessous puis confirme une dernière fois. Ce lien expire dans une heure. Si tu n'es pas à l'origine de cette demande, ignore cet e-mail : ton compte ne sera pas supprimé.",
+          "Continuer la suppression",
+          link
+        ));
+      } catch (error) {
+        await env.DB.prepare("UPDATE account_deletion_tokens SET used_at = ? WHERE token_hash = ?").bind(now(), tokenHash).run();
+        console.error("Account deletion email failed", error.message);
+        return json({ ok: false, error: "L'e-mail de confirmation n'a pas pu être envoyé. Ton compte n'a pas été supprimé. Réessaie plus tard." }, 502, cors);
+      }
+      return json({ ok: true, message: "Un e-mail de confirmation a été envoyé à l'adresse de ton compte. Ton compte ne sera supprimé qu'après la confirmation depuis cet e-mail." }, 200, cors);
+    }
+    if (route === "/confirm-account-deletion" && request.method === "POST") {
+      const data = await readJson(request);
+      const token = String(data.token || "");
+      if (token.length < 20 || token.length > 200) return json({ ok: false, error: "Lien de confirmation invalide." }, 400, cors);
+      const tokenHash = await sha256(token);
+      const deletion = await env.DB.prepare("SELECT account_id, expires_at, used_at FROM account_deletion_tokens WHERE token_hash = ?").bind(tokenHash).first();
+      if (!deletion || deletion.used_at || deletion.expires_at < now()) return json({ ok: false, error: "Ce lien est invalide, déjà utilisé ou expiré. Recommence la demande depuis ton compte." }, 400, cors);
+      const account = await env.DB.prepare("SELECT id, email, username FROM accounts WHERE id = ?").bind(deletion.account_id).first();
+      if (!account) return json({ ok: false, error: "Ce compte n'existe plus." }, 404, cors);
+      const timestamp = now();
+      await env.DB.batch([
+        env.DB.prepare("UPDATE account_deletion_tokens SET used_at = ? WHERE token_hash = ? AND used_at IS NULL").bind(timestamp, tokenHash),
+        env.DB.prepare("DELETE FROM sessions WHERE account_id = ?").bind(account.id),
+        env.DB.prepare("DELETE FROM email_verification_tokens WHERE account_id = ?").bind(account.id),
+        env.DB.prepare("DELETE FROM password_reset_tokens WHERE account_id = ?").bind(account.id),
+        env.DB.prepare("DELETE FROM email_change_tokens WHERE account_id = ?").bind(account.id),
+        env.DB.prepare("DELETE FROM email_2fa_challenges WHERE account_id = ?").bind(account.id),
+        env.DB.prepare("DELETE FROM account_preferences WHERE account_id = ?").bind(account.id),
+        env.DB.prepare("DELETE FROM player_progress WHERE account_id = ?").bind(account.id),
+        env.DB.prepare("DELETE FROM account_deletion_tokens WHERE account_id = ?").bind(account.id),
+        env.DB.prepare("DELETE FROM auth_rate_limits WHERE rate_key IN (?, ?, ?, ?, ?, ?)").bind(
+          "account-delete:" + account.id,
+          "email-2fa:" + account.id,
+          "password-change:" + account.id,
+          "username:" + account.id,
+          "email-change:" + account.id,
+          "login-email:" + String(account.email).toLowerCase()
+        ),
+        env.DB.prepare("DELETE FROM accounts WHERE id = ?").bind(account.id)
+      ]);
+      try {
+        await sendEmail(env, account.email, "Compte War Contry supprimé", emailTemplate(
+          "Ton compte a été supprimé",
+          "Le compte War Contry associé au pseudo " + escapeHtml(account.username) + " a été supprimé définitivement. Si tu n'es pas à l'origine de cette action, contacte l'équipe War Contry.",
+          "Retourner sur War Contry",
+          siteUrl(env, "index.html")
+        ));
+      } catch (error) {
+        console.error("Account deletion notification failed", error.message);
+      }
+      return json({ ok: true, message: "Ton compte War Contry a été supprimé définitivement." }, 200, cors);
+    }
     if (route === "/me" && request.method === "GET") {
       const account = await authenticatedAccount(request, env);
       if (!account) return json({ ok: false, error: "Session expirée. Reconnecte-toi." }, 401, cors);
