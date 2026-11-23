@@ -70,10 +70,12 @@ async function loadAccount(){
  }
  try{
   const response=await fetch(ACCOUNT_API+"/me",{headers:authHeaders(),cache:"no-store"});
-  const data=await response.json();
-  if(!response.ok||!data.ok) throw new Error(data.error||"Session expirée.");
-  accountUsername=data.account.username;
-  $("vote-account-message").textContent="Connecté en tant que "+accountUsername+". Ton pseudo est récupéré automatiquement depuis ton compte War Contry.";
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok||!data.ok) throw new Error(data.error||("Erreur de session (HTTP "+response.status+")."));
+  const username=data.account?.username;
+  if(!username) throw new Error("Le compte est connecté, mais le pseudo est introuvable dans la réponse du serveur.");
+  accountUsername=username;
+  $("vote-account-message").textContent="Connecté en tant que "+accountUsername+". Ton pseudo Minecraft est récupéré automatiquement.";
   document.querySelectorAll(".external-pseudo").forEach(input=>{
    input.value=accountUsername;
    input.readOnly=true;
@@ -81,17 +83,18 @@ async function loadAccount(){
   });
   $("sp-pseudo").value=accountUsername;
   $("sp-pseudo").readOnly=true;
+  $("sp-start").disabled=false;
+  document.querySelectorAll(".external-vote-form button").forEach(button=>button.disabled=false);
   await loadExternalCooldowns();
   return true;
  }catch(error){
-  $("vote-account-message").textContent="Ta session a expiré. Reconnecte-toi à ton compte War Contry pour voter.";
-  showStatus("Session expirée. Reconnecte-toi.");
+  $("vote-account-message").textContent=error.message||"Impossible de vérifier ta session.";
+  showStatus(error.message||"Impossible de vérifier ta session.");
   $("sp-start").disabled=true;
   document.querySelectorAll(".external-vote-form button").forEach(button=>button.disabled=true);
   return false;
  }
 }
-
 async function checkVote(){
  if(!activeSession||!accountToken) return;
  try{
