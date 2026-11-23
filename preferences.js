@@ -146,21 +146,23 @@
     "Impossible de préparer le vote.":"Unable to prepare the vote."
   };
   function translate(language) {
-    if (language !== "en") return;
+    const dictionary = language === "en" ? EN : Object.fromEntries(Object.entries(EN).map(([fr,en]) => [en,fr]));
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     let node;
     while ((node = walker.nextNode())) {
       const original = node.nodeValue;
       const trimmed = original.trim();
-      if (!trimmed || !EN[trimmed]) continue;
-      node.nodeValue = original.replace(trimmed, EN[trimmed]);
+      if (!trimmed || !dictionary[trimmed]) continue;
+      node.nodeValue = original.replace(trimmed, dictionary[trimmed]);
     }
     document.querySelectorAll("select option").forEach(option => {
-      if (EN[option.textContent.trim()]) option.textContent = EN[option.textContent.trim()];
+      const label = option.textContent.trim();
+      if (dictionary[label]) option.textContent = dictionary[label];
     });
     const titles = {
       "War Contry — Événement de Noël 2026":"War Contry — Christmas Event 2026",
       "War Contry — Calendrier de l'Avent 2026":"War Contry — Advent Calendar 2026",
+      "War Contry — Votes":"War Contry — Votes",
       "Mon compte — War Contry":"My account — War Contry",
       "Langue — War Contry":"Language — War Contry",
       "Apparence — War Contry":"Appearance — War Contry",
@@ -169,7 +171,8 @@
       "Modifier mon pseudo — War Contry":"Change my username — War Contry",
       "Modifier mon adresse e-mail — War Contry":"Change my email address — War Contry"
     };
-    if (titles[document.title]) document.title = titles[document.title];
+    const titleMap = language === "en" ? titles : Object.fromEntries(Object.entries(titles).map(([fr,en]) => [en,fr]));
+    if (titleMap[document.title]) document.title = titleMap[document.title];
     const description = document.querySelector('meta[name="description"]');
     if (description) {
       const descriptions = {
@@ -177,7 +180,8 @@
         "Ouvre une case par jour du 1er au 24 décembre 2026 sur War Contry.":"Open one tile per day from December 1 to 24, 2026 on War Contry.",
         "Vote pour War Contry et soutiens le serveur.":"Vote for War Contry and support the server."
       };
-      if (descriptions[description.content]) description.content = descriptions[description.content];
+      const descriptionMap = language === "en" ? descriptions : Object.fromEntries(Object.entries(descriptions).map(([fr,en]) => [en,fr]));
+      if (descriptionMap[description.content]) description.content = descriptionMap[description.content];
     }
   }
   window.wcApplyLanguage = translate;
@@ -192,7 +196,7 @@
       window.wcPreferences = data.preferences;
       translate(data.preferences.language);
       if (data.preferences.language === "en") {
-        const observer = new MutationObserver(() => translate("en"));
+        const observer = new MutationObserver(() => translate(document.documentElement.lang));
         observer.observe(document.body, { subtree: true, childList: true, characterData: true });
       }
       window.dispatchEvent(new CustomEvent("wc-preferences-loaded", { detail: data.preferences }));
