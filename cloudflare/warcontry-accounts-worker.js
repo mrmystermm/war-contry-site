@@ -19,6 +19,11 @@ async function sha256(value) {
   const digest = await crypto.subtle.digest("SHA-256", encoder.encode(value));
   return [...new Uint8Array(digest)].map(x => x.toString(16).padStart(2, "0")).join("");
 }
+async function emailCodeMac(env, challengeId, code) {
+  const key = await crypto.subtle.importKey("raw", encoder.encode(String(env.BREVO_API_KEY || "")), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(challengeId + ":" + code));
+  return [...new Uint8Array(signature)].map(x => x.toString(16).padStart(2, "0")).join("");
+}
 function bytesToBase64(bytes) {
   return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
@@ -182,7 +187,7 @@ async function handle(request, env) {
         const challengeId = crypto.randomUUID();
         const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, "0");
         const timestamp = now();
-        await env.DB.prepare("INSERT INTO email_2fa_challenges (id, account_id, purpose, code_mac, expires_at, attempts, created_at) VALUES (?, ?, 'login', ?, ?, 0, ?)").bind(challengeId, account.id, await sha256(challengeId + ":" + code), timestamp + 600, timestamp).run();
+        await env.DB.prepare("INSERT INTO email_2fa_challenges (id, account_id, purpose, code_mac, expires_at, attempts, created_at) VALUES (?, ?, 'login', ?, ?, 0, ?)").bind(challengeId, account.id, await emailCodeMac(env, challengeId, code), timestamp + 600, timestamp).run();
         try {
           await sendEmail(env, account.email, "Ton code de connexion — War Contry", '<div style="background:#07111f;padding:32px;font-family:Arial,sans-serif;color:#edf2f8"><div style="max-width:560px;margin:auto;background:#111e30;border:1px solid #34445b;border-radius:14px;padding:30px"><p style="color:#e8c46b;font-weight:bold;letter-spacing:3px">WAR CONTRY</p><h1 style="color:#f4d58d">Code de connexion</h1><p>Voici ton code de sécurité :</p><p style="font-size:32px;letter-spacing:8px;font-weight:bold;color:#f4d58d">' + code + '</p><p>Ce code expire dans 10 minutes et ne peut être utilisé qu’une fois.</p></div></div>');
         } catch (error) {
@@ -254,7 +259,7 @@ async function handle(request, env) {
       if (!/^[0-9]{6}$/.test(code) || challengeId.length > 80) return json({ ok: false, error: "Code invalide." }, 400, cors);
       const challenge = await env.DB.prepare("SELECT id, purpose, code_mac, expires_at, attempts, used_at FROM email_2fa_challenges WHERE id = ? AND account_id = ? AND purpose IN ('enable', 'disable')").bind(challengeId, account.id).first();
       if (!challenge || challenge.used_at || challenge.expires_at < now() || challenge.attempts >= 5) return json({ ok: false, error: "Ce code est invalide ou expiré. Recommence la demande." }, 400, cors);
-      if (await sha256(challengeId + ":" + code) !== challenge.code_mac) {
+      if (await emailCodeMac(env, challengeId, code) !== challenge.code_mac) {
         await env.DB.prepare("UPDATE email_2fa_challenges SET attempts = attempts + 1 WHERE id = ?").bind(challengeId).run();
         return json({ ok: false, error: "Code incorrect." }, 401, cors);
       }
