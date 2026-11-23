@@ -385,6 +385,7 @@ async function handle(request, env) {
         env.DB.prepare("DELETE FROM email_2fa_challenges WHERE account_id = ?").bind(account.id),
         env.DB.prepare("DELETE FROM account_preferences WHERE account_id = ?").bind(account.id),
         env.DB.prepare("DELETE FROM player_progress WHERE account_id = ?").bind(account.id),
+        env.DB.prepare("DELETE FROM account_votes WHERE account_id = ?").bind(account.id),
         env.DB.prepare("DELETE FROM account_deletion_tokens WHERE account_id = ?").bind(account.id),
         env.DB.prepare("DELETE FROM auth_rate_limits WHERE rate_key IN (?, ?, ?, ?, ?, ?)").bind(
           "account-delete:" + account.id,
