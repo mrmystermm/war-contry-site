@@ -173,7 +173,7 @@ async function handle(request, env) {
       const ipKey = "login-ip:" + clientIp(request);
       const emailKey = "login-email:" + email;
       if (!await rateLimit(env, ipKey, 20, 900) || !await rateLimit(env, emailKey, 10, 900)) return json({ ok: false, error: "Trop de tentatives. Réessaie dans 15 minutes." }, 429, cors);
-      const account = await env.DB.prepare("SELECT id, email, username, password_hash, email_verified_at FROM accounts WHERE email = ?").bind(email).first();
+      const account = await env.DB.prepare("SELECT id, email, username, password_hash, email_verified_at, email_2fa_enabled FROM accounts WHERE email = ?").bind(email).first();
       if (!account || !await verifyPassword(password, account.password_hash)) return json({ ok: false, error: "Adresse e-mail ou mot de passe incorrect." }, 401, cors);
       if (!account.email_verified_at) return json({ ok: false, error: "Vérifie d'abord ton adresse e-mail." }, 403, cors);
       if (account.email_2fa_enabled === 1) {
