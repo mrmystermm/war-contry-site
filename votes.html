@@ -14,6 +14,10 @@
 .vote-panel p{color:#cbd5e3;font-size:14px}.vote-note{max-width:1080px;margin:22px auto;padding:16px 20px;border:1px solid var(--line);border-radius:12px;color:var(--muted);font-size:13px}
 .vote-form{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}.vote-form input{flex:1;min-width:140px;padding:10px;border-radius:8px;border:1px solid var(--line);background:#0a1422;color:#fff}
 .vote-result{font-size:13px;color:#e8d7ae;margin-top:12px;line-height:1.5}.vote-status.success{color:#22c55e;font-weight:700}.vote-site .vote-action:disabled{opacity:.55;cursor:not-allowed;filter:grayscale(.8)}
+.leaderboard-wrap{margin-top:16px;overflow-x:auto}.leaderboard-table{width:100%;border-collapse:collapse;font-size:14px}
+.leaderboard-table th,.leaderboard-table td{padding:11px 9px;text-align:left;border-bottom:1px solid var(--line)}
+.leaderboard-table th{color:var(--gold);font-weight:700}.leaderboard-table td:last-child,.leaderboard-table th:last-child{text-align:right;font-variant-numeric:tabular-nums}
+.leaderboard-rank{width:48px;color:var(--gold);font-weight:700}.leaderboard-message{color:var(--muted);font-size:13px;margin-top:12px}
 </style></head>
 <body><div class="cal-bg"></div>
 <nav class="nav"><div class="nav-in"><a class="brand" href="index.html"><img src="assets/favicon.png" alt=""><span>WAR CONTRY</span></a><div class="links"><a href="index.html">Événement de Noël</a><a href="calendrier.html">🎁 Calendrier de l'Avent</a><a href="votes.html" class="cta on">🗳️ Votes</a><a href="connexion.html">👤 Connexion</a></div></div></nav>
@@ -33,7 +37,7 @@
 <section class="vote-panels">
 
 <article class="vote-panel"><h2>🎁 Tes récompenses</h2><p>Les récompenses seront définies séparément. Les ouvertures de plateformes sans confirmation automatique resteront des participations et ne déclencheront pas de récompense individuelle.</p></article>
-<article class="vote-panel"><h2>🏆 Classement mensuel</h2><p>Le classement distinguera les votes réellement confirmés des simples participations aux plateformes externes.</p></article>
+<article class="vote-panel" id="monthly-leaderboard"><h2>🏆 Classement mensuel</h2><p id="leaderboard-month">Chargement du classement…</p><div class="leaderboard-wrap"><table class="leaderboard-table"><thead><tr><th>Rang</th><th>Joueur</th><th>Nombre de votes</th></tr></thead><tbody id="leaderboard-body"><tr><td colspan="3">Chargement…</td></tr></tbody></table></div><div class="leaderboard-message" id="leaderboard-message" aria-live="polite"></div></article>
 </section>
 
 </main><footer><b>WAR CONTRY</b><br>Votes communautaires · Merci de soutenir le serveur !</footer>
@@ -58,6 +62,34 @@ function authHeaders(extra={}){
 }
 function formatDate(timestamp){
  return new Date(Number(timestamp)*1000).toLocaleString("fr-FR",{dateStyle:"medium",timeStyle:"short"});
+}
+async function loadLeaderboard(){
+ const body=$("leaderboard-body");
+ const monthLabel=$("leaderboard-month");
+ const message=$("leaderboard-message");
+ try{
+  const response=await fetch(API_BASE+"/leaderboard",{cache:"no-store"});
+  const data=await response.json();
+  if(!response.ok||!data.ok) throw new Error(data.error||"Impossible de charger le classement.");
+  const parts=data.month.split("-").map(Number);
+  monthLabel.textContent=new Date(Date.UTC(parts[0],parts[1]-1,1)).toLocaleDateString("fr-FR",{month:"long",year:"numeric"});
+  body.replaceChildren();
+  if(!data.leaderboard.length){
+   const row=document.createElement("tr");const cell=document.createElement("td");
+   cell.colSpan=3;cell.textContent="Aucun vote pour le moment ce mois-ci.";row.appendChild(cell);body.appendChild(row);return;
+  }
+  data.leaderboard.forEach(entry=>{
+   const row=document.createElement("tr");const rank=document.createElement("td");
+   rank.className="leaderboard-rank";rank.textContent=entry.rank===1?"🥇":entry.rank===2?"🥈":entry.rank===3?"🥉":String(entry.rank);
+   const player=document.createElement("td");player.textContent=entry.pseudo;
+   const total=document.createElement("td");total.textContent=String(entry.total);
+   row.append(rank,player,total);body.appendChild(row);
+  });
+ }catch(error){
+  body.replaceChildren();const row=document.createElement("tr");const cell=document.createElement("td");
+  cell.colSpan=3;cell.textContent="Le classement est momentanément indisponible.";row.appendChild(cell);body.appendChild(row);
+  message.textContent=error.message||"Erreur de chargement.";
+ }
 }
 
 async function loadAccount(){
@@ -278,6 +310,8 @@ $("sp-form").addEventListener("submit",async event=>{
   $("sp-start").disabled=false;
  }
 });
+
+loadLeaderboard();
 
 (async()=>{
  const connected=await loadAccount();
