@@ -214,6 +214,34 @@ async function handle(request, env) {
       ]);
       return json({ ok: true, message: "Mot de passe modifié. Tu peux maintenant te connecter." }, 200, cors);
     }
+    if (route === "/change-password" && request.method === "POST") {
+      const account = await authenticatedAccount(request, env);
+      if (!account) return json({ ok: false, error: "Session expirée. Reconnecte-toi." }, 401, cors);
+      if (!await rateLimit(env, "password-change:" + account.id, 5, 3600)) return json({ ok: false, error: "Trop de tentatives. Réessaie dans une heure." }, 429, cors);
+      const data = await readJson(request);
+      const currentPassword = String(data.currentPassword || "");
+      const newPassword = String(data.newPassword || "");
+      if (!currentPassword || currentPassword.length > 128) return json({ ok: false, error: "Saisis ton mot de passe actuel." }, 400, cors);
+      if (newPassword.length < 12 || newPassword.length > 128) return json({ ok: false, error: "Le nouveau mot de passe doit contenir entre 12 et 128 caractères." }, 400, cors);
+      const credentials = await env.DB.prepare("SELECT password_hash FROM accounts WHERE id = ?").bind(account.id).first();
+      if (!credentials || !await verifyPassword(currentPassword, credentials.password_hash)) return json({ ok: false, error: "Mot de passe actuel incorrect." }, 401, cors);
+      if (await verifyPassword(newPassword, credentials.password_hash)) return json({ ok: false, error: "Le nouveau mot de passe doit être différent de l'ancien." }, 400, cors);
+      const timestamp = now();
+      const passwordHash = await hashPassword(newPassword);
+      const authorization = request.headers.get("Authorization") || "";
+      const currentToken = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
+      const currentTokenHash = await sha256(currentToken);
+      await env.DB.batch([
+        env.DB.prepare("UPDATE accounts SET password_hash = ?, updated_at = ? WHERE id = ?").bind(passwordHash, timestamp, account.id),
+        env.DB.prepare("UPDATE sessions SET revoked_at = ? WHERE account_id = ? AND token_hash != ? AND revoked_at IS NULL").bind(timestamp, account.id, currentTokenHash)
+      ]);
+      try {
+        await sendEmail(env, account.email, "Mot de passe modifié — War Contry", emailTemplate("Mot de passe modifié", "Le mot de passe de ton compte War Contry vient d’être modifié. Les autres sessions de ton compte ont été déconnectées. Si tu n’es pas à l’origine de cette modification, utilise immédiatement la récupération de compte.", "Ouvrir War Contry", siteUrl(env, "connexion.html")));
+      } catch (error) {
+        console.error("Password change notification failed", error.message);
+      }
+      return json({ ok: true, message: "Ton mot de passe a été modifié. Les autres appareils ont été déconnectés." }, 200, cors);
+    }
     if (route === "/me" && request.method === "GET") {
       const account = await authenticatedAccount(request, env);
       if (!account) return json({ ok: false, error: "Session expirée. Reconnecte-toi." }, 401, cors);
