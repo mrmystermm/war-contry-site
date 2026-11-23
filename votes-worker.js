@@ -3,6 +3,11 @@ const API = "https://serveur-prive.net/api/v1/servers";
 const VOTE_URL = "https://serveur-prive.net/minecraft/war-contry/vote";
 const SESSION_TTL_SECONDS = 900;
 const VOTE_LOOKBACK_SECONDS = 89 * 60;
+const EXTERNAL_COOLDOWNS = {
+  "planet-minecraft": 24 * 60 * 60,
+  "serveur-minecraft": 3 * 60 * 60,
+  "minecraft-ip-list": 24 * 60 * 60
+};
 const encoder = new TextEncoder();
 
 function now() {
@@ -74,6 +79,71 @@ export default {
     }
 
     try {
+      if (url.pathname === "/external/status" && request.method === "GET") {
+        const account = await authenticatedAccount(request, env);
+        if (!account) return json({ ok: false, error: "Connecte-toi à ton compte War Contry." }, 401, origin);
+
+        const source = url.searchParams.get("source") || "";
+        if (!Object.prototype.hasOwnProperty.call(EXTERNAL_COOLDOWNS, source)) {
+          return json({ ok: false, error: "Plateforme invalide." }, 400, origin);
+        }
+
+        const row = await env.ACCOUNT_DB.prepare(
+          "SELECT last_opened_at, next_available_at FROM account_vote_cooldowns WHERE account_id = ? AND source = ?"
+        ).bind(account.id, source).first();
+
+        return json({
+          ok: true,
+          source,
+          last_opened_at: row?.last_opened_at || null,
+          next_available_at: row?.next_available_at || null,
+          seconds_left: Math.max(0, Number(row?.next_available_at || 0) - now())
+        }, 200, origin);
+      }
+
+      if (url.pathname === "/external/start" && request.method === "POST") {
+        const account = await authenticatedAccount(request, env);
+        if (!account) return json({ ok: false, error: "Connecte-toi à ton compte War Contry." }, 401, origin);
+
+        const body = await request.json().catch(() => ({}));
+        const source = String(body.source || "");
+        const cooldown = EXTERNAL_COOLDOWNS[source];
+
+        if (!cooldown) return json({ ok: false, error: "Plateforme invalide." }, 400, origin);
+
+        const timestamp = now();
+        const nextAvailableAt = timestamp + cooldown;
+        const result = await env.ACCOUNT_DB.prepare(
+          `INSERT INTO account_vote_cooldowns (account_id, source, last_opened_at, next_available_at)
+           VALUES (?, ?, ?, ?)
+           ON CONFLICT(account_id, source) DO UPDATE SET
+             last_opened_at = excluded.last_opened_at,
+             next_available_at = excluded.next_available_at
+           WHERE account_vote_cooldowns.next_available_at <= ?`
+        ).bind(account.id, source, timestamp, nextAvailableAt, timestamp).run();
+
+        if (!result.meta || result.meta.changes !== 1) {
+          const current = await env.ACCOUNT_DB.prepare(
+            "SELECT next_available_at FROM account_vote_cooldowns WHERE account_id = ? AND source = ?"
+          ).bind(account.id, source).first();
+
+          return json({
+            ok: false,
+            error: "Tu as déjà ouvert cette plateforme récemment.",
+            next_available_at: current?.next_available_at || null,
+            seconds_left: Math.max(0, Number(current?.next_available_at || 0) - timestamp)
+          }, 429, origin);
+        }
+
+        return json({
+          ok: true,
+          source,
+          last_opened_at: timestamp,
+          next_available_at: nextAvailableAt,
+          seconds_left: cooldown
+        }, 200, origin);
+      }
+
       if (url.pathname === "/start" && request.method === "POST") {
         const account = await authenticatedAccount(request, env);
         if (!account) return json({ ok: false, error: "Connecte-toi à ton compte War Contry pour voter." }, 401, origin);
@@ -164,7 +234,15 @@ export default {
         const count = await env.ACCOUNT_DB.prepare(
           "SELECT COUNT(*) AS total FROM account_votes WHERE account_id = ?"
         ).bind(account.id).first();
-        return json({ ok: true, votes: result.results || [], total: Number(count?.total || 0) }, 200, origin);
+        const participations = await env.ACCOUNT_DB.prepare(
+          "SELECT source, last_opened_at, next_available_at FROM account_vote_cooldowns WHERE account_id = ? ORDER BY last_opened_at DESC"
+        ).bind(account.id).all();
+        return json({
+          ok: true,
+          votes: result.results || [],
+          participations: participations.results || [],
+          total: Number(count?.total || 0)
+        }, 200, origin);
       }
 
       return json({ ok: false, error: "Route inconnue." }, 404, origin);
