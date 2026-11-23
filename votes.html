@@ -217,11 +217,18 @@ document.querySelectorAll(".external-vote-form").forEach(form=>{
    form.dataset.cooldownUntil=String(data.next_available_at);
    form.dataset.cooldownLoaded="yes";
    voteWindow.location.href=form.dataset.url;
-   status.textContent="La page partenaire a été ouverte. Merci de soutenir War Contry !";
+   status.textContent="Page partenaire ouverte. Merci de patienter 5 secondes…";
    updateExternalButtons();
-   setTimeout(()=>{
-    status.textContent="Merci pour ta participation à War Contry !";
-   },12000);
+   let secondsLeft=5;
+   const participationTimer=setInterval(()=>{
+    secondsLeft--;
+    if(secondsLeft>0){
+     status.textContent="Merci de patienter encore "+secondsLeft+" seconde"+(secondsLeft>1?"s":"")+"…";
+    }else{
+     clearInterval(participationTimer);
+     status.textContent="Merci pour ton soutien à War Contry !";
+    }
+   },1000);
    }catch(error){
    status.textContent=error.message||"Une erreur est survenue. Réessaie plus tard.";
    updateExternalButtons();
