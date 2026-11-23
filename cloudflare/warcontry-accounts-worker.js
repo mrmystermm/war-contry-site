@@ -1,5 +1,5 @@
 const encoder = new TextEncoder();
-const PASSWORD_ITERATIONS = 310000;
+const PASSWORD_ITERATIONS = 100000;
 const SESSION_TTL = 30 * 24 * 60 * 60;
 const VERIFY_TTL = 24 * 60 * 60;
 const RESET_TTL = 60 * 60;
