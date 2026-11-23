@@ -206,7 +206,7 @@ async function handle(request, env) {
       if (!/^[0-9]{6}$/.test(code) || challengeId.length > 80) return json({ ok: false, error: "Code invalide." }, 400, cors);
       const challenge = await env.DB.prepare("SELECT id, account_id, code_mac, expires_at, attempts, used_at FROM email_2fa_challenges WHERE id = ? AND purpose = 'login'").bind(challengeId).first();
       if (!challenge || challenge.used_at || challenge.expires_at < now() || challenge.attempts >= 5) return json({ ok: false, error: "Ce code est invalide ou expiré. Recommence la connexion." }, 400, cors);
-      const expected = await sha256(challengeId + ":" + code);
+      const expected = await emailCodeMac(env, challengeId, code);
       if (expected !== challenge.code_mac) {
         await env.DB.prepare("UPDATE email_2fa_challenges SET attempts = attempts + 1 WHERE id = ?").bind(challengeId).run();
         return json({ ok: false, error: "Code incorrect." }, 401, cors);
@@ -240,7 +240,7 @@ async function handle(request, env) {
       const challengeId = crypto.randomUUID();
       const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, "0");
       const timestamp = now();
-      await env.DB.prepare("INSERT INTO email_2fa_challenges (id, account_id, purpose, code_mac, expires_at, attempts, created_at) VALUES (?, ?, ?, ?, ?, 0, ?)").bind(challengeId, account.id, purpose, await sha256(challengeId + ":" + code), timestamp + 600, timestamp).run();
+      await env.DB.prepare("INSERT INTO email_2fa_challenges (id, account_id, purpose, code_mac, expires_at, attempts, created_at) VALUES (?, ?, ?, ?, ?, 0, ?)").bind(challengeId, account.id, purpose, await emailCodeMac(env, challengeId, code), timestamp + 600, timestamp).run();
       const subject = purpose === "enable" ? "Activation de l'A2F — War Contry" : "Désactivation de l'A2F — War Contry";
       try {
         await sendEmail(env, account.email, subject, '<div style="background:#07111f;padding:32px;font-family:Arial,sans-serif;color:#edf2f8"><div style="max-width:560px;margin:auto;background:#111e30;border:1px solid #34445b;border-radius:14px;padding:30px"><p style="color:#e8c46b;font-weight:bold;letter-spacing:3px">WAR CONTRY</p><h1 style="color:#f4d58d">Confirmation de sécurité</h1><p>Voici ton code de confirmation :</p><p style="font-size:32px;letter-spacing:8px;font-weight:bold;color:#f4d58d">' + code + '</p><p>Ce code expire dans 10 minutes.</p></div></div>');
