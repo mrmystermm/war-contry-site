@@ -195,10 +195,6 @@
       document.documentElement.lang = data.preferences.language;
       window.wcPreferences = data.preferences;
       translate(data.preferences.language);
-      if (data.preferences.language === "en") {
-        const observer = new MutationObserver(() => translate(document.documentElement.lang));
-        observer.observe(document.body, { subtree: true, childList: true });
-      }
       window.dispatchEvent(new CustomEvent("wc-preferences-loaded", { detail: data.preferences }));
     }).catch(() => {});
 })();
