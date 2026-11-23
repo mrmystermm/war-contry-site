@@ -79,6 +79,21 @@ export default {
     }
 
     try {
+      if (url.pathname === "/leaderboard" && request.method === "GET") {
+        const requestedMonth = url.searchParams.get("month") || "";
+        const month = requestedMonth || new Date().toISOString().slice(0, 7);
+        if (!/^\\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+          return json({ ok: false, error: "Mois invalide. Utilise le format AAAA-MM." }, 400, origin);
+        }
+        const start = Math.floor(Date.parse(month + "-01T00:00:00.000Z") / 1000);
+        const parts = month.split("-").map(Number);
+        const nextMonth = parts[1] === 12 ? (parts[0] + 1) + "-01" : parts[0] + "-" + String(parts[1] + 1).padStart(2, "0");
+        const end = Math.floor(Date.parse(nextMonth + "-01T00:00:00.000Z") / 1000);
+        const result = await env.ACCOUNT_DB.prepare(
+          "SELECT current.account_id, (SELECT latest.pseudo FROM account_votes AS latest WHERE latest.account_id = current.account_id ORDER BY latest.voted_at DESC LIMIT 1) AS pseudo, COUNT(*) AS total FROM account_votes AS current WHERE current.voted_at >= ? AND current.voted_at < ? GROUP BY current.account_id ORDER BY total DESC, pseudo COLLATE NOCASE ASC LIMIT 100"
+        ).bind(start, end).all();
+        return json({ ok: true, month, leaderboard: (result.results || []).map((row, index) => ({ rank: index + 1, pseudo: row.pseudo || "Joueur", total: Number(row.total || 0) })) }, 200, origin);
+      }
       if (url.pathname === "/external/status" && request.method === "GET") {
         const account = await authenticatedAccount(request, env);
         if (!account) return json({ ok: false, error: "Connecte-toi à ton compte War Contry." }, 401, origin);
@@ -134,6 +149,10 @@ export default {
             seconds_left: Math.max(0, Number(current?.next_available_at || 0) - timestamp)
           }, 429, origin);
         }
+
+        await env.ACCOUNT_DB.prepare(
+          "INSERT OR IGNORE INTO account_votes (account_id, source, voted_at, pseudo) VALUES (?, ?, ?, ?)"
+        ).bind(account.id, source, timestamp, account.username).run();
 
         return json({
           ok: true,
