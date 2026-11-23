@@ -1,0 +1,7 @@
+const API="https://warcontry-accounts.mr-mystermm.workers.dev";
+const $=id=>document.getElementById(id);
+const token=localStorage.getItem("wc_account_token");
+function notice(message,type=""){const el=$("notice");if(el){el.textContent=message;el.className="notice "+type}}
+async function load(){if(!token){location.href="connexion.html";return}try{const r=await fetch(API+"/preferences",{headers:{Authorization:"Bearer "+token},cache:"no-store"});const d=await r.json();if(!r.ok||!d.ok)throw Error(d.error||"Impossible de charger les préférences.");if($("language-choice"))$("language-choice").value=d.preferences.language;if($("theme-choice"))$("theme-choice").value=d.preferences.theme;}catch(e){notice(e.message,"error")}}
+async function save(values){try{const r=await fetch(API+"/preferences",{method:"PUT",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify(values)});const d=await r.json();if(!r.ok||!d.ok)throw Error(d.error||"Enregistrement impossible.");document.documentElement.dataset.theme=d.preferences.theme;document.documentElement.lang=d.preferences.language;notice("Préférences enregistrées sur ton compte !","ok")}catch(e){notice(e.message,"error")}}
+document.addEventListener("DOMContentLoaded",()=>{load();$("save-language")?.addEventListener("click",()=>save({language:$("language-choice").value,theme:document.documentElement.dataset.theme||"dark"}));$("save-theme")?.addEventListener("click",()=>save({language:document.documentElement.lang==="en"?"en":"fr",theme:$("theme-choice").value}));});
