@@ -76,6 +76,7 @@
     };
     if (titles[document.title]) document.title = titles[document.title];
   }
+  window.wcApplyLanguage = translate;
   const token = localStorage.getItem("wc_account_token");
   if (!token) return;
   fetch(API + "/preferences", { headers: { Authorization: "Bearer " + token }, cache: "no-store" })
