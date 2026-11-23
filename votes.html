@@ -18,7 +18,7 @@
 <body><div class="cal-bg"></div>
 <nav class="nav"><div class="nav-in"><a class="brand" href="index.html"><img src="assets/favicon.png" alt=""><span>WAR CONTRY</span></a><div class="links"><a href="index.html">Événement de Noël</a><a href="calendrier.html">🎁 Calendrier de l'Avent</a><a href="votes.html" class="cta on">🗳️ Votes</a><a href="connexion.html">👤 Connexion</a></div></div></nav>
 <header class="page-head"><span class="eyebrow">✦ Soutiens War Contry</span><h1>Votes &amp; récompenses</h1><p>Vote sur les plateformes partenaires pour soutenir le serveur.</p></header>
-<section class="vote-intro"><p>Choisis une plateforme, entre ton pseudo Minecraft et vote pour soutenir le serveur.</p></section>
+<section class="vote-intro"><p id="vote-account-message">Connecte-toi à ton compte War Contry pour voter. Ton pseudo Minecraft sera récupéré automatiquement.</p></section>
 <main>
 <section class="vote-sites" aria-label="Sites de vote">
 <article class="vote-site"><h2>Planet Minecraft</h2><p>Soutiens War Contry sur Planet Minecraft.</p><form class="vote-form external-vote-form" data-platform="planet-minecraft" data-url="https://www.planetminecraft.com/server/war-contry/vote/"><input class="external-pseudo" maxlength="16" minlength="3" autocomplete="off" placeholder="Pseudo Minecraft" required><button class="vote-action" type="submit">Ouvrir et participer ↗</button></form><div class="vote-status external-status" aria-live="polite"> </div></article>
@@ -31,7 +31,7 @@
 </article>
 </section>
 <section class="vote-panels">
-<article class="vote-panel"><h2>🔥 Ta série de votes</h2><p>La série sera calculée à partir des votes confirmés, sans confondre les délais propres à chaque plateforme.</p></article>
+<article class="vote-panel"><h2>📜 Historique de tes votes</h2><p id="vote-history">Connecte-toi pour consulter tes votes confirmés.</p></article>
 <article class="vote-panel"><h2>🎁 Tes récompenses</h2><p>Les récompenses seront définies séparément. Aucun clic sur un lien ne sera considéré comme un vote confirmé.</p></article>
 <article class="vote-panel"><h2>🏆 Classement mensuel</h2><p>Le classement sera alimenté uniquement par les votes confirmés par les plateformes partenaires.</p></article>
 </section>
@@ -39,82 +39,153 @@
 </main><footer><b>WAR CONTRY</b><br>Votes communautaires · Merci de soutenir le serveur !</footer>
 <script>
 const API_BASE = "https://warcontry-votes.mr-mystermm.workers.dev";
+const ACCOUNT_API = "https://warcontry-accounts.mr-mystermm.workers.dev";
 const $ = id => document.getElementById(id);
+const accountToken = localStorage.getItem("wc_account_token") || "";
+let accountUsername = "";
 let activeSession = null;
 let pollHandle = null;
-function showStatus(text, success=false){ const el=$("sp-status");el.textContent=text;el.classList.toggle("success",success);el.style.color=success?"#22c55e":""; }
-async function checkVote(){
- if(!activeSession) return;
+
+function showStatus(text, success=false){
+ const el=$("sp-status");
+ el.textContent=text;
+ el.classList.toggle("success",success);
+ el.style.color=success?"#22c55e":"";
+}
+function authHeaders(extra={}){
+ return {...extra, Authorization:"Bearer "+accountToken};
+}
+function formatDate(timestamp){
+ return new Date(Number(timestamp)*1000).toLocaleString("fr-FR",{dateStyle:"medium",timeStyle:"short"});
+}
+async function loadHistory(){
  try{
-  const r=await fetch(API_BASE+"/status?id="+encodeURIComponent(activeSession),{cache:"no-store"});
-  const data=await r.json();
-  if(!r.ok || !data.ok) throw new Error(data.error||"Vérification impossible.");
+  const response=await fetch(API_BASE+"/history",{headers:authHeaders(),cache:"no-store"});
+  const data=await response.json();
+  if(!response.ok||!data.ok) throw new Error(data.error||"Historique indisponible.");
+  if(!data.votes.length){
+   $("vote-history").textContent="Aucun vote confirmé pour le moment.";
+   return;
+  }
+  const list=document.createElement("ul");
+  list.style.paddingLeft="20px";
+  data.votes.forEach(vote=>{
+   const item=document.createElement("li");
+   item.textContent=vote.source+" — "+formatDate(vote.voted_at);
+   list.appendChild(item);
+  });
+  $("vote-history").textContent="";
+  $("vote-history").appendChild(list);
+  const count=document.createElement("p");
+  count.textContent="Total : "+data.total+" vote(s) confirmé(s).";
+  $("vote-history").appendChild(count);
+ }catch(error){
+  $("vote-history").textContent=error.message||"Impossible de charger ton historique.";
+ }
+}
+async function loadAccount(){
+ if(!accountToken){
+  $("vote-account-message").textContent="Tu dois te connecter à ton compte War Contry avant de voter. Ton pseudo Minecraft sera récupéré automatiquement.";
+  showStatus("Connecte-toi à ton compte War Contry avant de préparer un vote.");
+  $("sp-start").disabled=true;
+  document.querySelectorAll(".external-vote-form button").forEach(button=>button.disabled=true);
+  return false;
+ }
+ try{
+  const response=await fetch(ACCOUNT_API+"/me",{headers:authHeaders(),cache:"no-store"});
+  const data=await response.json();
+  if(!response.ok||!data.ok) throw new Error(data.error||"Session expirée.");
+  accountUsername=data.account.username;
+  $("vote-account-message").textContent="Connecté en tant que "+accountUsername+". Ton pseudo est récupéré automatiquement depuis ton compte War Contry.";
+  document.querySelectorAll(".external-pseudo").forEach(input=>{
+   input.value=accountUsername;
+   input.readOnly=true;
+   input.setAttribute("aria-label","Pseudo Minecraft de ton compte War Contry");
+  });
+  $("sp-pseudo").value=accountUsername;
+  $("sp-pseudo").readOnly=true;
+  await loadHistory();
+  return true;
+ }catch(error){
+  $("vote-account-message").textContent="Ta session a expiré. Reconnecte-toi à ton compte War Contry pour voter.";
+  showStatus("Session expirée. Reconnecte-toi.");
+  $("sp-start").disabled=true;
+  document.querySelectorAll(".external-vote-form button").forEach(button=>button.disabled=true);
+  return false;
+ }
+}
+
+async function checkVote(){
+ if(!activeSession||!accountToken) return;
+ try{
+  const response=await fetch(API_BASE+"/status?id="+encodeURIComponent(activeSession),{
+   headers:authHeaders(),cache:"no-store"
+  });
+  const data=await response.json();
+  if(!response.ok||!data.ok) throw new Error(data.error||"Vérification impossible.");
   if(data.status==="confirmed"){
    clearInterval(pollHandle);pollHandle=null;
    showStatus("✓ Vote confirmé pour "+data.pseudo+" !",true);
-   $("sp-result").textContent="Merci d’avoir soutenu War Contry !";
+   $("sp-result").textContent="Merci d’avoir soutenu War Contry ! Ton vote est enregistré sur ton compte.";
+   await loadHistory();
    return;
   }
-  if(data.status==="username_mismatch"){ clearInterval(pollHandle);pollHandle=null;showStatus("Le pseudo confirmé par Serveur Privé ne correspond pas. Aucun vote n’a été attribué.");return;}
   if(data.status==="expired"){
    clearInterval(pollHandle);pollHandle=null;
-   showStatus("Le code de vote a expiré. Prépare un nouveau vote.");
+   sessionStorage.removeItem("wc_sp_vote_session");
+   activeSession=null;
+   showStatus("La session de vote a expiré. Prépare un nouveau vote.");
    return;
   }
   showStatus("En attente de confirmation de ton vote sur Serveur Privé… ("+data.seconds_left+" s)");
- }catch(e){showStatus(e.message||"Erreur de vérification.");}
-}
-const EXTERNAL_WAIT_SECONDS = 30;
-const externalTimers = new Map();
-function externalStorageKey(platform,pseudo){return "wc_vote_participation_"+platform+"_"+pseudo.toLowerCase();}
-function updateExternalParticipation(form, startedAt){
- const pseudo=form.querySelector(".external-pseudo").value.trim();
- const status=form.parentElement.querySelector(".external-status");
- const button=form.querySelector("button");
- const key=externalStorageKey(form.dataset.platform,pseudo);
- const remaining=Math.max(0,EXTERNAL_WAIT_SECONDS-Math.floor(Date.now()/1000-startedAt));
- if(remaining<=0){
-  clearInterval(externalTimers.get(key));externalTimers.delete(key);localStorage.setItem(key,JSON.stringify({startedAt,accepted:true}));
-  status.textContent="✓ Participation acceptée ! Merci d’avoir voté pour War Contry !";status.style.color="#22c55e";status.style.fontWeight="700";button.disabled=false;button.textContent="Participer à nouveau";return;
+ }catch(error){
+  clearInterval(pollHandle);pollHandle=null;
+  if(error.message&&error.message.toLowerCase().includes("session")){
+   sessionStorage.removeItem("wc_sp_vote_session");
+   activeSession=null;
+  }
+  showStatus(error.message||"Erreur de vérification.");
  }
- status.textContent="⏳ En attente de ton vote…";status.style.color="";button.disabled=true;button.textContent="En attente…";
 }
-function startExternalParticipation(form, startedAt){
- const pseudo=form.querySelector(".external-pseudo").value.trim();const key=externalStorageKey(form.dataset.platform,pseudo);
- localStorage.setItem(key,JSON.stringify({startedAt,accepted:false}));updateExternalParticipation(form,startedAt);
- if(externalTimers.has(key))clearInterval(externalTimers.get(key));externalTimers.set(key,setInterval(()=>updateExternalParticipation(form,startedAt),1000));
-}
+
 document.querySelectorAll(".external-vote-form").forEach(form=>{
  form.addEventListener("submit",event=>{
-  event.preventDefault();const pseudo=form.querySelector(".external-pseudo").value.trim();
-  if(!/^[A-Za-z0-9_]{3,16}$/.test(pseudo)){form.parentElement.querySelector(".external-status").textContent="Entre un pseudo Minecraft valide (3 à 16 caractères).";return;}
+  event.preventDefault();
+  if(!accountToken||!accountUsername){
+   form.parentElement.querySelector(".external-status").textContent="Connecte-toi à ton compte War Contry pour voter.";
+   return;
+  }
   const voteWindow=window.open(form.dataset.url,"_blank");
-  if(!voteWindow){form.parentElement.querySelector(".external-status").textContent="Le navigateur a bloqué l’ouverture. Autorise les fenêtres pop-up puis réessaie.";return;}
-  voteWindow.opener=null;form.parentElement.querySelector(".external-status").textContent="⏳ En attente de ton vote…";startExternalParticipation(form,Math.floor(Date.now()/1000));
- });
- const pseudoInput=form.querySelector(".external-pseudo");
- pseudoInput.addEventListener("change",()=>{
-  const pseudo=pseudoInput.value.trim();if(!/^[A-Za-z0-9_]{3,16}$/.test(pseudo))return;
-  const saved=JSON.parse(localStorage.getItem(externalStorageKey(form.dataset.platform,pseudo))||"null");if(!saved)return;
-  if(saved.accepted||Math.floor(Date.now()/1000)-saved.startedAt>=EXTERNAL_WAIT_SECONDS){const status=form.parentElement.querySelector(".external-status");status.textContent="✓ Participation acceptée ! Merci d’avoir voté pour War Contry !";status.style.color="#22c55e";status.style.fontWeight="700";}
-  else startExternalParticipation(form,saved.startedAt);
+  const status=form.parentElement.querySelector(".external-status");
+  if(!voteWindow){
+   status.textContent="Le navigateur a bloqué l’ouverture. Autorise les fenêtres pop-up puis réessaie.";
+   return;
+  }
+  voteWindow.opener=null;
+  status.textContent="La page partenaire est ouverte pour "+accountUsername+". Attention : cette plateforme ne fournit pas de confirmation automatique à War Contry ; ce vote n'est donc pas ajouté à l'historique.";
  });
 });
-function formatDuration(total){
- let s=Math.max(0,Number(total)||0),h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;
- return (h?h+" h ":"")+(m?m+" min ":"")+sec+" s";
-}
-$("sp-form").addEventListener("submit",async e=>{
- e.preventDefault();clearInterval(pollHandle);
- const pseudo=$("sp-pseudo").value.trim();
- // Ouvre l'onglet immédiatement pendant le clic, pour éviter le blocage des pop-ups.
+
+$("sp-form").addEventListener("submit",async event=>{
+ event.preventDefault();
+ if(!accountToken||!accountUsername){
+  showStatus("Connecte-toi à ton compte War Contry avant de voter.");
+  return;
+ }
+ clearInterval(pollHandle);
  const voteWindow=window.open("about:blank","_blank");
  if(voteWindow) voteWindow.opener=null;
- $("sp-start").disabled=true;$("sp-result").textContent="";showStatus("Préparation de la vérification du vote…");
+ $("sp-start").disabled=true;
+ $("sp-result").textContent="";
+ showStatus("Préparation de la vérification du vote…");
  try{
-  const r=await fetch(API_BASE+"/start",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({pseudo})});
-  const data=await r.json();
-  if(!r.ok||!data.ok) throw new Error(data.error||"Impossible de préparer le vote.");
+  const response=await fetch(API_BASE+"/start",{
+   method:"POST",
+   headers:authHeaders({"Content-Type":"application/json"}),
+   body:JSON.stringify({})
+  });
+  const data=await response.json();
+  if(!response.ok||!data.ok) throw new Error(data.error||"Impossible de préparer le vote.");
   activeSession=data.session;
   sessionStorage.setItem("wc_sp_vote_session",activeSession);
   showStatus("Le vote est prêt. La page partenaire va s'ouvrir.");
@@ -130,11 +201,25 @@ $("sp-form").addEventListener("submit",async e=>{
    $("sp-result").appendChild(link);
   }
   pollHandle=setInterval(checkVote,5000);
- }catch(err){
+ }catch(error){
   if(voteWindow) voteWindow.close();
-  showStatus(err.message||"Erreur de connexion.");
- }finally{$("sp-start").disabled=false;}
+  showStatus(error.message||"Erreur de connexion.");
+ }finally{
+  $("sp-start").disabled=false;
+ }
 });
-activeSession=sessionStorage.getItem("wc_sp_vote_session");
-if(activeSession){showStatus("Session de vote retrouvée. Vérification…");checkVote();pollHandle=setInterval(checkVote,5000);}
+
+(async()=>{
+ const connected=await loadAccount();
+ if(connected){
+  activeSession=sessionStorage.getItem("wc_sp_vote_session");
+  if(activeSession){
+   showStatus("Session de vote retrouvée. Vérification…");
+   checkVote();
+   pollHandle=setInterval(checkVote,5000);
+  }else{
+   showStatus("Prêt à voter avec le compte "+accountUsername+".");
+  }
+ }
+})();
 </script><script src="auth-nav.js"></script><script src="preferences.js"></script></body></html>
