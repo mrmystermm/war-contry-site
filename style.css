@@ -85,3 +85,19 @@ input{width:100%;padding:12px;border-radius:9px;border:1px solid #607389;backgro
 @media(max-width:820px){.split{grid-template-columns:1fr}.grid{grid-template-columns:repeat(4,1fr)}.nav-in{gap:10px;flex-wrap:wrap}.brand span{display:none}.links{margin-left:auto}}
 @media(max-width:480px){.grid{grid-template-columns:repeat(3,1fr);gap:9px}.links a{padding:7px 10px;font-size:14px}.count div{min-width:64px}.count b{font-size:26px}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* Thème clair des pages publiques */
+:root[data-theme="light"]{color-scheme:light;--ink:#f1f4f8;--cream:#172235;--muted:#536174;--panel:rgba(255,255,255,.9);--line:rgba(164,126,48,.3)}
+:root[data-theme="light"] body{background:#f1f4f8;color:#172235}
+:root[data-theme="light"] .nav{background:rgba(255,255,255,.94)}
+:root[data-theme="light"] .links a{color:#34445a}
+:root[data-theme="light"] .links a:hover{background:#e8edf4;color:#172235}
+:root[data-theme="light"] .links a.cta{background:var(--gold);color:#241a06}
+:root[data-theme="light"] .card,:root[data-theme="light"] .vote-site,:root[data-theme="light"] .vote-panel{background:#fff;border-color:#d7dfeb}
+:root[data-theme="light"] .card p,:root[data-theme="light"] .vote-site p,:root[data-theme="light"] .vote-panel p,:root[data-theme="light"] .dates span{color:#536174}
+:root[data-theme="light"] .stay-in{background:linear-gradient(#ffffffc9,#ffffffed),url(assets/fond-noel.png) center 30%/cover;color:#172235}
+:root[data-theme="light"] .stay p{color:#536174}
+:root[data-theme="light"] .tile{background:linear-gradient(150deg,#fff,#e5ebf3);color:#172235}
+:root[data-theme="light"] .tile.missed{background:#e5e9ef}
+:root[data-theme="light"] .box{background:linear-gradient(150deg,#fff,#eef2f7)}
+:root[data-theme="light"] .box p{color:#536174}
