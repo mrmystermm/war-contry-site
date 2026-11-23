@@ -31,6 +31,12 @@ async function refreshRegistrationState(){
  }
 }
 document.addEventListener("DOMContentLoaded",()=>{
+ const params=new URLSearchParams(location.search);
+ if(params.get("inscription")==="envoyee"){
+  const emailField=$("email");
+  if(emailField&&params.get("email"))emailField.value=params.get("email");
+  show("Inscription envoyée ! Consulte ta boîte mail et clique sur le lien de confirmation avant de te connecter.","ok");
+ }
  const bind=(id,path,payload,done)=>{const f=$(id);if(!f)return;f.addEventListener("submit",async e=>{e.preventDefault();show("Traitement en cours…");try{const d=await call(path,payload());show(d.message||"Opération réussie.","ok");if(done)done(d)}catch(x){show(x.message,"error")}})};
  bind("register-form","/register",()=>({username:$("username").value,email:$("email").value,password:$("password").value}),d=>{const email=$("email").value.trim();location.href="connexion.html?inscription=envoyee&email="+encodeURIComponent(email)});
  bind("login-form","/login",()=>({email:$("email").value,password:$("password").value}),d=>{localStorage.setItem("wc_account_token",d.token);location.href="mon-compte.html"});
