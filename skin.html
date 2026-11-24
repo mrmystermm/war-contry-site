@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#060d1a"><title>Skin Minecraft — War Contry</title><link rel="stylesheet" href="auth.css"></head>
+<body><nav class="auth-nav"><a class="brand" href="index.html">WAR CONTRY</a><a href="mon-compte.html">← Mon compte</a></nav>
+<main class="settings-wrap"><div class="settings-layout">
+<aside class="settings-side"><a href="mon-compte.html">👤 Compte</a><a href="langue.html">🌐 Langue</a><a href="connexion-minecraft.html">⛏️ Connexion Minecraft</a><a class="active" href="skin.html">🎭 Skin Minecraft</a><a href="apparence.html">🎨 Apparence</a><a href="securite.html">🔒 Sécurité</a><a href="zone-sensible.html">⚠️ Zone sensible</a></aside>
+<section class="settings-main"><span class="eyebrow">Personnalisation</span><h1>Skin Minecraft</h1><p>Importe le skin que tu souhaites utiliser sur War Contry. L'aperçu est affiché en 2D, de face et de dos.</p>
+<div class="danger-zone" style="border-color:var(--line);background:#091422">
+<label class="field"><span>Choisir un skin (PNG 64 × 64)</span><input id="skin-file" type="file" accept="image/png,.png"></label>
+<small class="field-help">Format accepté : PNG de 64 × 64 pixels, 1 Mo maximum. Les skins 64 × 32 ne sont pas encore pris en charge.</small>
+<button class="primary" id="skin-upload" type="button">Enregistrer mon skin</button>
+<div id="skin-notice" class="notice" role="status" aria-live="polite">Choisis un fichier PNG pour afficher son aperçu.</div>
+</div>
+<h2>Aperçu 2D</h2>
+<div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;justify-content:center">
+<div style="text-align:center"><strong>Face avant</strong><canvas id="skin-front" width="160" height="320" style="display:block;margin:12px auto;background:#101d30;border:1px solid var(--line);border-radius:10px;image-rendering:pixelated;width:120px;height:240px"></canvas></div>
+<div style="text-align:center"><strong>Face arrière</strong><canvas id="skin-back" width="160" height="320" style="display:block;margin:12px auto;background:#101d30;border:1px solid var(--line);border-radius:10px;image-rendering:pixelated;width:120px;height:240px"></canvas></div>
+</div>
+</section></div></main><footer>WAR CONTRY · Espace joueur</footer><script src="preferences.js"></script><script src="skin.js"></script></body></html>
