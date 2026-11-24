@@ -438,7 +438,7 @@ async function handle(request, env) {
       const base = String(env.SUPABASE_URL).replace(/\/+$/, "");
       const objectPath = encodeURIComponent(account.id) + "/skin.png";
       const upload = await fetch(base + "/storage/v1/object/minecraft-skins/" + objectPath, {
-        method: "PUT",
+        method: "POST",
         headers: {
           "Authorization": "Bearer " + env.SUPABASE_SECRET_KEY,
           "apikey": env.SUPABASE_SECRET_KEY,
