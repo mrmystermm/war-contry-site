@@ -57,7 +57,7 @@ function siteUrl(env, path) {
 function corsHeaders(request, env) {
   const origin = request.headers.get("Origin") || "";
   const allowed = new Set([String(env.SITE_URL || "").replace(/\/+$/, ""), String(env.SITE_URL || "").replace(/\/+$/, "").replace("://", "://www.")]);
-  const headers = { "Vary": "Origin", "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS", "Access-Control-Allow-Headers": "Content-Type, Authorization", "Access-Control-Max-Age": "86400" };
+  const headers = { "Vary": "Origin", "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS", "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Minecraft-Link-Secret", "Access-Control-Max-Age": "86400" };
   if (allowed.has(origin)) headers["Access-Control-Allow-Origin"] = origin;
   return headers;
 }
@@ -408,6 +408,70 @@ async function handle(request, env) {
         console.error("Account deletion notification failed", error.message);
       }
       return json({ ok: true, message: "Ton compte War Contry a été supprimé définitivement." }, 200, cors);
+    }
+    if (route === "/minecraft-link-create" && request.method === "POST") {
+      const suppliedSecret = request.headers.get("X-Minecraft-Link-Secret") || "";
+      if (!env.MINECRAFT_LINK_SECRET || String(env.MINECRAFT_LINK_SECRET).length < 32 ||
+          !suppliedSecret || await sha256(suppliedSecret) !== await sha256(String(env.MINECRAFT_LINK_SECRET))) {
+        return json({ ok: false, error: "Accès serveur refusé." }, 403, cors);
+      }
+      const data = await readJson(request);
+      const minecraftUuid = String(data.minecraftUuid || "").trim().toLowerCase();
+      const minecraftUsername = String(data.minecraftUsername || "").trim();
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(minecraftUuid)) {
+        return json({ ok: false, error: "UUID Minecraft invalide." }, 400, cors);
+      }
+      if (!/^[A-Za-z0-9_]{3,16}$/.test(minecraftUsername)) {
+        return json({ ok: false, error: "Pseudo Minecraft invalide." }, 400, cors);
+      }
+      if (!await rateLimit(env, "minecraft-code:" + minecraftUuid, 4, 300)) {
+        return json({ ok: false, error: "Un code vient déjà d'être généré récemment. Réessaie dans quelques minutes." }, 429, cors);
+      }
+      const timestamp = now();
+      await env.DB.prepare("DELETE FROM minecraft_link_codes WHERE expires_at <= ? OR used_at IS NOT NULL").bind(timestamp).run();
+      const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 100000000).padStart(8, "0");
+      await env.DB.prepare("INSERT INTO minecraft_link_codes (id, code_hash, minecraft_uuid, minecraft_username, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?)")
+        .bind(crypto.randomUUID(), await sha256(code), minecraftUuid, minecraftUsername, timestamp + 300, timestamp).run();
+      return json({ ok: true, code, expiresIn: 300, message: "Code temporaire généré." }, 200, cors);
+    }
+    if (route === "/minecraft-link-status" && request.method === "GET") {
+      const account = await authenticatedAccount(request, env);
+      if (!account) return json({ ok: false, error: "Session expirée. Reconnecte-toi." }, 401, cors);
+      const linked = await env.DB.prepare("SELECT minecraft_uuid, minecraft_username, linked_at FROM minecraft_links WHERE account_id = ?").bind(account.id).first();
+      return json({ ok: true, linked: linked ? { uuid: linked.minecraft_uuid, username: linked.minecraft_username, linkedAt: linked.linked_at } : null }, 200, cors);
+    }
+    if (route === "/minecraft-link-redeem" && request.method === "POST") {
+      const account = await authenticatedAccount(request, env);
+      if (!account) return json({ ok: false, error: "Session expirée. Reconnecte-toi." }, 401, cors);
+      if (!await rateLimit(env, "minecraft-redeem-account:" + account.id, 5, 900) ||
+          !await rateLimit(env, "minecraft-redeem-ip:" + clientIp(request), 20, 900)) {
+        return json({ ok: false, error: "Trop de tentatives. Réessaie dans 15 minutes." }, 429, cors);
+      }
+      const data = await readJson(request);
+      const code = String(data.code || "").trim();
+      if (!/^\\d{8}$/.test(code)) return json({ ok: false, error: "Saisis un code valide à 8 chiffres." }, 400, cors);
+      const existingLink = await env.DB.prepare("SELECT minecraft_username FROM minecraft_links WHERE account_id = ?").bind(account.id).first();
+      if (existingLink) return json({ ok: false, error: "Un compte Minecraft est déjà associé à ton compte War Contry." }, 409, cors);
+      const codeHash = await sha256(code);
+      const row = await env.DB.prepare("SELECT id, minecraft_uuid, minecraft_username, expires_at, used_at FROM minecraft_link_codes WHERE code_hash = ?").bind(codeHash).first();
+      if (!row || row.used_at !== null || row.expires_at <= now()) {
+        return json({ ok: false, error: "Code invalide, expiré ou déjà utilisé. Demande un nouveau code en jeu." }, 400, cors);
+      }
+      const otherLink = await env.DB.prepare("SELECT account_id FROM minecraft_links WHERE minecraft_uuid = ?").bind(row.minecraft_uuid).first();
+      if (otherLink) return json({ ok: false, error: "Ce compte Minecraft est déjà associé à un autre compte War Contry." }, 409, cors);
+      const timestamp = now();
+      const consumed = await env.DB.prepare("UPDATE minecraft_link_codes SET used_at = ? WHERE id = ? AND used_at IS NULL AND expires_at > ?")
+        .bind(timestamp, row.id, timestamp).run();
+      if (!consumed.meta || consumed.meta.changes !== 1) {
+        return json({ ok: false, error: "Ce code vient d'être utilisé ou a expiré. Demande-en un nouveau en jeu." }, 409, cors);
+      }
+      try {
+        await env.DB.prepare("INSERT INTO minecraft_links (account_id, minecraft_uuid, minecraft_username, linked_at) VALUES (?, ?, ?, ?)")
+          .bind(account.id, row.minecraft_uuid, row.minecraft_username, timestamp).run();
+      } catch {
+        return json({ ok: false, error: "Ce compte Minecraft ou ce compte War Contry est déjà associé. Vérifie la liaison existante." }, 409, cors);
+      }
+      return json({ ok: true, linked: { uuid: row.minecraft_uuid, username: row.minecraft_username, linkedAt: timestamp }, message: "Ton compte Minecraft est maintenant associé à ton compte War Contry." }, 200, cors);
     }
     if (route === "/me" && request.method === "GET") {
       const account = await authenticatedAccount(request, env);
