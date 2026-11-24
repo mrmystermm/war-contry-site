@@ -413,7 +413,7 @@ async function handle(request, env) {
       const account = await authenticatedAccount(request, env);
       if (!account) return json({ ok: false, error: "Session expirée. Reconnecte-toi." }, 401, cors);
       if (!env.SUPABASE_URL || !env.SUPABASE_SECRET_KEY) return json({ ok: false, error: "Le stockage des skins n'est pas configuré." }, 503, cors);
-      const publicUrl = String(env.SUPABASE_URL).replace(/\\/+$/, "") + "/storage/v1/object/public/minecraft-skins/" + encodeURIComponent(account.id) + "/skin.png";
+      const publicUrl = String(env.SUPABASE_URL).replace(/\/+$/, "") + "/storage/v1/object/public/minecraft-skins/" + encodeURIComponent(account.id) + "/skin.png";
       return json({ ok: true, skinUrl: publicUrl }, 200, cors);
     }
     if (route === "/skin-upload" && request.method === "POST") {
@@ -435,7 +435,7 @@ async function handle(request, env) {
       const width = view.getUint32(16);
       const height = view.getUint32(20);
       if (width !== 64 || height !== 64) return json({ ok: false, error: "Le skin doit avoir une taille de 64 × 64 pixels." }, 400, cors);
-      const base = String(env.SUPABASE_URL).replace(/\\/+$/, "");
+      const base = String(env.SUPABASE_URL).replace(/\/+$/, "");
       const objectPath = encodeURIComponent(account.id) + "/skin.png";
       const upload = await fetch(base + "/storage/v1/object/minecraft-skins/" + objectPath, {
         method: "PUT",
