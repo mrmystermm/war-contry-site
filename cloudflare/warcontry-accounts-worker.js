@@ -449,7 +449,7 @@ async function handle(request, env) {
       }
       const data = await readJson(request);
       const code = String(data.code || "").trim();
-      if (!/^\\d{8}$/.test(code)) return json({ ok: false, error: "Saisis un code valide à 8 chiffres." }, 400, cors);
+      if (!/^\d{8}$/.test(code)) return json({ ok: false, error: "Saisis un code valide à 8 chiffres." }, 400, cors);
       const existingLink = await env.DB.prepare("SELECT minecraft_username FROM minecraft_links WHERE account_id = ?").bind(account.id).first();
       if (existingLink) return json({ ok: false, error: "Un compte Minecraft est déjà associé à ton compte War Contry." }, 409, cors);
       const codeHash = await sha256(code);
