@@ -17,7 +17,19 @@
 .leaderboard-wrap{margin-top:16px;overflow-x:auto}.leaderboard-table{width:100%;border-collapse:collapse;font-size:14px}
 .leaderboard-table th,.leaderboard-table td{padding:11px 9px;text-align:left;border-bottom:1px solid var(--line)}
 .leaderboard-table th{color:var(--gold);font-weight:700}.leaderboard-table td:last-child,.leaderboard-table th:last-child{text-align:right;font-variant-numeric:tabular-nums}
-.leaderboard-rank{width:48px;color:var(--gold);font-weight:700}.leaderboard-message{color:var(--muted);font-size:13px;margin-top:12px}
+.leaderboard-rank{width:48px;color:var(--gold);font-weight:700}
+.reward-summary{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0}
+.reward-stat{flex:1;min-width:110px;padding:12px;border:1px solid var(--line);border-radius:10px;background:#0a1422}
+.reward-stat strong{display:block;color:var(--gold);font-size:21px}
+.reward-stat span{color:var(--muted);font-size:12px}
+.reward-progress{height:9px;background:#172437;border-radius:99px;overflow:hidden;margin:10px 0 6px}
+.reward-progress>span{display:block;height:100%;background:linear-gradient(90deg,var(--gold2),var(--gold));width:0}
+.reward-list{display:grid;gap:9px;margin-top:14px}
+.reward-entry{padding:12px;border:1px solid var(--line);border-radius:10px;background:#0a1422}
+.reward-entry-top{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.reward-entry strong{color:#f1d18b}
+.reward-entry small{display:block;color:var(--muted);margin-top:5px}
+.reward-empty{color:var(--muted);font-size:13px}.leaderboard-message{color:var(--muted);font-size:13px;margin-top:12px}
 </style></head>
 <body><div class="cal-bg"></div>
 <nav class="nav"><div class="nav-in"><a class="brand" href="index.html"><img src="assets/favicon.png" alt=""><span>WAR CONTRY</span></a><div class="links"><a href="index.html">Événement de Noël</a><a href="calendrier.html">🎁 Calendrier de l'Avent</a><a href="votes.html" class="cta on">🗳️ Votes</a><a href="connexion.html">👤 Connexion</a></div></div></nav>
@@ -36,7 +48,18 @@
 </section>
 <section class="vote-panels">
 
-<article class="vote-panel"><h2>🎁 Tes récompenses</h2><p>Les récompenses seront définies séparément. Les ouvertures de plateformes sans confirmation automatique resteront des participations et ne déclencheront pas de récompense individuelle.</p></article>
+<article class="vote-panel" id="my-rewards">
+<h2>🎁 Tes récompenses</h2>
+<p id="rewards-message">Connecte-toi pour consulter tes récompenses et ta progression du mois.</p>
+<div class="reward-summary">
+  <div class="reward-stat"><strong id="reward-vote-count">—</strong><span>Votes ce mois-ci</span></div>
+  <div class="reward-stat"><strong id="reward-draw-count">—</strong><span>Tirages effectués</span></div>
+  <div class="reward-stat"><strong id="reward-current-tier">—</strong><span>Palier actuel</span></div>
+</div>
+<div class="reward-progress"><span id="reward-progress-bar"></span></div>
+<p id="reward-progress-label" class="reward-empty">La progression apparaîtra ici.</p>
+<div id="reward-list" class="reward-list"><p class="reward-empty">Aucun historique chargé.</p></div>
+</article>
 <article class="vote-panel" id="monthly-leaderboard"><h2>🏆 Classement mensuel</h2><p id="leaderboard-month">Chargement du classement…</p><div class="leaderboard-wrap"><table class="leaderboard-table"><thead><tr><th>Rang</th><th>Joueur</th><th>Nombre de votes</th></tr></thead><tbody id="leaderboard-body"><tr><td colspan="3">Chargement…</td></tr></tbody></table></div><div class="leaderboard-message" id="leaderboard-message" aria-live="polite"></div></article>
 </section>
 
@@ -92,6 +115,55 @@ async function loadLeaderboard(){
  }
 }
 
+async function loadRewards(){
+ const message=$("rewards-message");
+ const list=$("reward-list");
+ if(!accountToken){
+  message.textContent="Connecte-toi à ton compte War Contry pour consulter tes récompenses.";
+  return;
+ }
+ try{
+  const response=await fetch(API_BASE+"/rewards",{headers:authHeaders(),cache:"no-store"});
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok||!data.ok) throw new Error(data.error||"Impossible de charger tes récompenses.");
+  const total=Number(data.total_votes||0);
+  const draws=Array.isArray(data.rewards)?data.rewards:[];
+  const tierNames=["Palier 0","Palier 1","Palier 2","Palier 3","Palier 4","Palier 5"];
+  $("reward-vote-count").textContent=String(total);
+  $("reward-draw-count").textContent=String(draws.length);
+  $("reward-current-tier").textContent=tierNames[Number(data.current_tier)||0];
+  const thresholds=[20,50,70,90,100];
+  const nextThreshold=thresholds.find(value=>total<value);
+  const progress=nextThreshold?Math.min(100,(total/(nextThreshold))*100):100;
+  $("reward-progress-bar").style.width=progress+"%";
+  $("reward-progress-label").textContent=nextThreshold
+   ? (nextThreshold-total)+" vote(s) avant le palier suivant ("+nextThreshold+" votes). "+Number(data.votes_toward_next_reward||0)+"/2 vote(s) vers le prochain tirage."
+   : "Palier maximal atteint. "+Number(data.votes_toward_next_reward||0)+"/2 vote(s) vers le prochain tirage.";
+  message.textContent="Progression de "+data.month+". Un tirage est effectué tous les 2 votes cumulés.";
+  list.replaceChildren();
+  if(!draws.length){
+   const empty=document.createElement("p");empty.className="reward-empty";
+   empty.textContent="Aucun tirage pour le moment. Il te faut 2 votes pour obtenir ton premier tirage.";
+   list.appendChild(empty);return;
+  }
+  draws.forEach(reward=>{
+   const entry=document.createElement("div");entry.className="reward-entry";
+   const top=document.createElement("div");top.className="reward-entry-top";
+   const name=document.createElement("strong");
+   name.textContent=reward.status==="no_reward"?"Aucune récompense":(reward.reward_name||"Récompense");
+   const status=document.createElement("span");
+   status.textContent=reward.status==="no_reward"?"Aucun gain":reward.status==="delivered"?"Distribuée en jeu":"En attente de distribution";
+   top.append(name,status);
+   const details=document.createElement("small");
+   details.textContent="Tirage n°"+reward.draw_number+" · "+tierNames[Number(reward.tier)||0]+
+    (reward.rarity?" · "+reward.rarity:"")+" · "+formatDate(reward.created_at);
+   entry.append(top,details);list.appendChild(entry);
+  });
+ }catch(error){
+  message.textContent=error.message||"Erreur lors du chargement des récompenses.";
+ }
+}
+
 async function loadAccount(){
  if(!accountToken){
   $("vote-account-message").textContent="Tu dois te connecter à ton compte War Contry avant de voter. Ton pseudo Minecraft sera récupéré automatiquement.";
@@ -118,6 +190,7 @@ async function loadAccount(){
   $("sp-start").disabled=false;
   document.querySelectorAll(".external-vote-form button").forEach(button=>button.disabled=false);
   await loadExternalCooldowns();
+  await loadRewards();
   return true;
  }catch(error){
   $("vote-account-message").textContent=error.message||"Impossible de vérifier ta session.";
