@@ -30,6 +30,17 @@
 .reward-entry strong{color:#f1d18b}
 .reward-entry small{display:block;color:var(--muted);margin-top:5px}
 .reward-empty{color:var(--muted);font-size:13px}.leaderboard-message{color:var(--muted);font-size:13px;margin-top:12px}
+.tier-browser{margin:22px 0 12px;padding-top:16px;border-top:1px solid var(--line)}
+.tier-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0}
+.tier-tab{padding:9px 6px;border:1px solid var(--line);border-radius:9px;background:#0a1422;color:#cbd5e3;cursor:pointer;font:inherit;font-size:13px}
+.tier-tab[aria-pressed="true"]{border-color:var(--gold);color:var(--gold);background:#2a2417}
+.tier-info{color:var(--muted);font-size:13px;margin:8px 0}
+.tier-reward-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px}
+.tier-reward{padding:11px;border:1px solid var(--line);border-radius:9px;background:#0a1422}
+.tier-reward strong{display:block;color:#f1d18b;font-size:14px}
+.tier-reward span{display:block;color:var(--muted);font-size:12px;margin-top:5px}
+.tier-reward .drop-rate{color:var(--gold);font-weight:700}
+
 </style></head>
 <body><div class="cal-bg"></div>
 <nav class="nav"><div class="nav-in"><a class="brand" href="index.html"><img src="assets/favicon.png" alt=""><span>WAR CONTRY</span></a><div class="links"><a href="index.html">Événement de Noël</a><a href="calendrier.html">🎁 Calendrier de l'Avent</a><a href="votes.html" class="cta on">🗳️ Votes</a><a href="connexion.html">👤 Connexion</a></div></div></nav>
@@ -58,6 +69,20 @@
 </div>
 <div class="reward-progress"><span id="reward-progress-bar"></span></div>
 <p id="reward-progress-label" class="reward-empty">La progression apparaîtra ici.</p>
+<div class="tier-browser" aria-label="Catalogue des récompenses par palier">
+ <h3>🎯 Catalogue des paliers</h3>
+ <p class="tier-info">Sélectionne un palier pour découvrir les récompenses disponibles et leurs probabilités de drop.</p>
+ <div class="tier-tabs" id="tier-tabs" role="group" aria-label="Choisir un palier">
+  <button type="button" class="tier-tab" data-tier="0" aria-pressed="true">Palier 0</button>
+  <button type="button" class="tier-tab" data-tier="1" aria-pressed="false">Palier 1</button>
+  <button type="button" class="tier-tab" data-tier="2" aria-pressed="false">Palier 2</button>
+  <button type="button" class="tier-tab" data-tier="3" aria-pressed="false">Palier 3</button>
+  <button type="button" class="tier-tab" data-tier="4" aria-pressed="false">Palier 4</button>
+  <button type="button" class="tier-tab" data-tier="5" aria-pressed="false">Palier 5</button>
+ </div>
+ <p class="tier-info" id="tier-description">0 à 19 votes cumulés ce mois-ci.</p>
+ <div class="tier-reward-grid" id="tier-reward-grid"></div>
+</div>
 <div id="reward-list" class="reward-list"><p class="reward-empty">Aucun historique chargé.</p></div>
 </article>
 <article class="vote-panel" id="monthly-leaderboard"><h2>🏆 Classement mensuel</h2><p id="leaderboard-month">Chargement du classement…</p><div class="leaderboard-wrap"><table class="leaderboard-table"><thead><tr><th>Rang</th><th>Joueur</th><th>Nombre de votes</th></tr></thead><tbody id="leaderboard-body"><tr><td colspan="3">Chargement…</td></tr></tbody></table></div><div class="leaderboard-message" id="leaderboard-message" aria-live="polite"></div></article>
@@ -113,6 +138,51 @@ async function loadLeaderboard(){
   cell.colSpan=3;cell.textContent="Le classement est momentanément indisponible.";row.appendChild(cell);body.appendChild(row);
   message.textContent=error.message||"Erreur de chargement.";
  }
+}
+
+const REWARD_CATALOG = {
+ 0:[["Un Missile Repulsif","Légendaire",0.749],["16 émeraudes","Épique",2.497],["2 pommes de notch","Épique",3.121],["16 acier","Rare",6.242],["200 dollars","Rare",12.484],["100 dollars","Commun",74.906]],
+ 1:[["Un Missile Repulsif","Mythique",0.25],["5000 dollars","Mythique",0.499],["Une épée en netherite","Épique",2.497],["Une épée en diamant","Épique",3.121],["210 dollars","Commun",18.727],["110 dollars","Commun",74.906]],
+ 2:[["Un missile Shrapnel","Mythique",0.25],["Un lanceur de missile T2","Mythique",0.499],["2 pommes de notch","Épique",2.497],["220 dollars","Commun",18.727],["120 dollars","Commun",74.906]],
+ 3:[["Un missile repulsif","Mythique",0.25],["Un missile Incendiary","Mythique",0.499],["16 émeraudes","Épique",2.497],["Un missile Condensed","Épique",3.121],["230 dollars","Commun",18.727],["130 dollars","Commun",74.906]],
+ 4:[["Un Missile fragmentation","Mythique",0.25],["Un Missile Incendiary","Mythique",0.499],["Un torse hazmat","Épique",2.497],["240 dollars","Commun",18.727],["140 dollars","Commun",74.906]],
+ 5:[["Un missile nucléaire","Mythique",0.25],["16 émeraudes","Légendaire",1.248],["Un missile contagious","Légendaire",1.623],["Un kit de lancement de missile T3","Épique",2.497],["250 dollars","Commun",18.727],["150 dollars","Commun",74.906]]
+};
+const TIER_REQUIREMENTS=["0 à 19 votes","20 à 49 votes","50 à 69 votes","70 à 89 votes","90 à 99 votes","100 votes et plus"];
+function renderTierRewards(tier){
+ const grid=$("tier-reward-grid");
+ const description=$("tier-description");
+ if(!grid||!description) return;
+ document.querySelectorAll(".tier-tab").forEach(button=>{
+  button.setAttribute("aria-pressed",String(Number(button.dataset.tier)===tier));
+ });
+ description.textContent="Palier "+tier+" · "+TIER_REQUIREMENTS[tier]+" cumulés ce mois-ci. Probabilité calculée pour chaque tirage de ce palier.";
+ grid.replaceChildren();
+ let total=0;
+ REWARD_CATALOG[tier].forEach(([name,rarity,probability])=>{
+  total+=probability;
+  const card=document.createElement("div");card.className="tier-reward";
+  const title=document.createElement("strong");title.textContent=name;
+  const quality=document.createElement("span");quality.textContent=rarity;
+  const rate=document.createElement("span");rate.className="drop-rate";rate.textContent=probability.toLocaleString("fr-FR")+" % de chance";
+  card.append(title,quality,rate);grid.appendChild(card);
+ });
+ const noReward=Math.max(0,100-total);
+ if(noReward>0.0001){
+  const card=document.createElement("div");card.className="tier-reward";
+  const title=document.createElement("strong");title.textContent="Aucune récompense";
+  const quality=document.createElement("span");quality.textContent="Tirage sans gain";
+  const rate=document.createElement("span");rate.className="drop-rate";rate.textContent=noReward.toLocaleString("fr-FR")+" % de chance";
+  card.append(title,quality,rate);grid.appendChild(card);
+ }
+}
+document.querySelectorAll(".tier-tab").forEach(button=>{
+ button.addEventListener("click",()=>renderTierRewards(Number(button.dataset.tier)));
+});
+renderTierRewards(0);
+
+async function refreshVotePanels(){
+ await Promise.all([loadRewards(),loadLeaderboard()]);
 }
 
 async function loadRewards(){
@@ -212,6 +282,7 @@ async function checkVote(){
    clearInterval(pollHandle);pollHandle=null;
    showStatus("✓ Vote confirmé pour "+data.pseudo+" !",true);
    $("sp-result").textContent="Merci d’avoir soutenu War Contry ! Ton vote est enregistré sur ton compte.";
+   await refreshVotePanels();
     return;
   }
   if(data.status==="expired"){
@@ -331,6 +402,7 @@ document.querySelectorAll(".external-vote-form").forEach(form=>{
    form.dataset.cooldownUntil=String(data.next_available_at);
    form.dataset.cooldownLoaded="yes";
    voteWindow.location.href=form.dataset.url;
+   await refreshVotePanels();
    form.dataset.participationUntil=String(Math.floor(Date.now()/1000)+5);
    delete form.dataset.participationDone;
    updateExternalButtons();
