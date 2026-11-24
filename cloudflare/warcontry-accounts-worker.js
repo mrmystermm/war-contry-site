@@ -418,7 +418,7 @@ async function handle(request, env) {
       const data = await readJson(request);
       const minecraftUuid = String(data.minecraftUuid || "").trim().toLowerCase();
       const minecraftUsername = String(data.minecraftUsername || "").trim();
-      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(minecraftUuid)) {
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(minecraftUuid)) {
         return json({ ok: false, error: "UUID Minecraft invalide." }, 400, cors);
       }
       if (!/^[A-Za-z0-9_]{3,16}$/.test(minecraftUsername)) {
