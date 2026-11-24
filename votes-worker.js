@@ -373,6 +373,32 @@ export default {
         }, 200, origin);
       }
 
+      if (url.pathname === "/rewards" && request.method === "GET") {
+        const account = await authenticatedAccount(request, env);
+        if (!account) return json({ ok: false, error: "Connecte-toi à ton compte War Contry pour consulter tes récompenses." }, 401, origin);
+
+        const month = new Date().toISOString().slice(0, 7);
+        const { start, end } = getVoteMonthBounds(month);
+        const countRow = await env.ACCOUNT_DB.prepare(
+          "SELECT COUNT(*) AS total FROM account_votes WHERE account_id = ? AND voted_at >= ? AND voted_at < ?"
+        ).bind(account.id, start, end).first();
+        const totalVotes = Number(countRow?.total || 0);
+        const rewardsResult = await env.ACCOUNT_DB.prepare(
+          "SELECT id, month, draw_number, tier, reward_key, reward_name, rarity, probability, status, created_at, delivered_at, delivery_reference FROM vote_rewards WHERE account_id = ? AND month = ? ORDER BY draw_number DESC"
+        ).bind(account.id, month).all();
+
+        return json({
+          ok: true,
+          month,
+          total_votes: totalVotes,
+          votes_toward_next_reward: totalVotes % 2,
+          votes_remaining: totalVotes % 2 === 0 ? 2 : 1,
+          next_draw_at_vote: totalVotes + (totalVotes % 2 === 0 ? 2 : 1),
+          current_tier: tierForVoteCount(totalVotes),
+          rewards: rewardsResult.results || []
+        }, 200, origin);
+      }
+
       if (url.pathname === "/history" && request.method === "GET") {
         const account = await authenticatedAccount(request, env);
         if (!account) return json({ ok: false, error: "Connecte-toi à ton compte War Contry pour consulter ton historique." }, 401, origin);
