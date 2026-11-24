@@ -55,6 +55,127 @@ async function getRecentVotes(serverToken) {
   return data.data;
 }
 
+
+const REWARD_POOLS = {
+  0: [
+    { key: "missile-repulsif", name: "Un Missile Repulsif", rarity: "Légendaire", probability: 0.749 },
+    { key: "emeralds-16", name: "16 émeraudes", rarity: "Épique", probability: 2.497 },
+    { key: "notch-apples-2", name: "2 pommes de notch", rarity: "Épique", probability: 3.121 },
+    { key: "steel-16", name: "16 acier", rarity: "Rare", probability: 6.242 },
+    { key: "dollars-200", name: "200 dollars", rarity: "Rare", probability: 12.484 },
+    { key: "dollars-100", name: "100 dollars", rarity: "Commun", probability: 74.906 }
+  ],
+  1: [
+    { key: "missile-repulsif", name: "Un Missile Repulsif", rarity: "Mythique", probability: 0.25 },
+    { key: "dollars-5000", name: "5000 dollars", rarity: "Mythique", probability: 0.499 },
+    { key: "netherite-sword", name: "Une épée en netherite", rarity: "Épique", probability: 2.497 },
+    { key: "diamond-sword", name: "Une épée en diamant", rarity: "Épique", probability: 3.121 },
+    { key: "dollars-210", name: "210 dollars", rarity: "Commun", probability: 18.727 },
+    { key: "dollars-110", name: "110 dollars", rarity: "Commun", probability: 74.906 }
+  ],
+  2: [
+    { key: "missile-shrapnel", name: "Un missile Shrapnel", rarity: "Mythique", probability: 0.25 },
+    { key: "missile-launcher-t2", name: "Un lanceur de missile T2", rarity: "Mythique", probability: 0.499 },
+    { key: "notch-apples-2", name: "2 pommes de notch", rarity: "Épique", probability: 2.497 },
+    { key: "dollars-220", name: "220 dollars", rarity: "Commun", probability: 18.727 },
+    { key: "dollars-120", name: "120 dollars", rarity: "Commun", probability: 74.906 }
+  ],
+  3: [
+    { key: "missile-repulsif", name: "Un Missile repulsif", rarity: "Mythique", probability: 0.25 },
+    { key: "missile-incendiary", name: "Un missile Incendiary", rarity: "Mythique", probability: 0.499 },
+    { key: "emeralds-16", name: "16 émeraudes", rarity: "Épique", probability: 2.497 },
+    { key: "missile-condensed", name: "Un missile Condensed", rarity: "Épique", probability: 3.121 },
+    { key: "dollars-230", name: "230 dollars", rarity: "Commun", probability: 18.727 },
+    { key: "dollars-130", name: "130 dollars", rarity: "Commun", probability: 74.906 }
+  ],
+  4: [
+    { key: "missile-fragmentation", name: "Un Missile fragmentation", rarity: "Mythique", probability: 0.25 },
+    { key: "missile-incendiary", name: "Un Missile Incendiary", rarity: "Mythique", probability: 0.499 },
+    { key: "hazmat-torso", name: "Un torse hazmat", rarity: "Épique", probability: 2.497 },
+    { key: "dollars-240", name: "240 dollars", rarity: "Commun", probability: 18.727 },
+    { key: "dollars-140", name: "140 dollars", rarity: "Commun", probability: 74.906 }
+  ],
+  5: [
+    { key: "missile-nuclear", name: "Un missile nucléaire", rarity: "Mythique", probability: 0.25 },
+    { key: "emeralds-16-legendary", name: "16 émeraudes", rarity: "Légendaire", probability: 1.248 },
+    { key: "missile-contagious", name: "Un missile contagious", rarity: "Légendaire", probability: 1.623 },
+    { key: "missile-launch-kit-t3", name: "Un kit de lancement de missile T3", rarity: "Épique", probability: 2.497 },
+    { key: "dollars-250", name: "250 dollars", rarity: "Commun", probability: 18.727 },
+    { key: "dollars-150", name: "150 dollars", rarity: "Commun", probability: 74.906 }
+  ]
+};
+
+function getVoteMonthBounds(month) {
+  const start = Math.floor(Date.parse(month + "-01T00:00:00.000Z") / 1000);
+  const [year, monthNumber] = month.split("-").map(Number);
+  const nextMonth = monthNumber === 12
+    ? (year + 1) + "-01"
+    : year + "-" + String(monthNumber + 1).padStart(2, "0");
+  const end = Math.floor(Date.parse(nextMonth + "-01T00:00:00.000Z") / 1000);
+  return { start, end };
+}
+
+function tierForVoteCount(total) {
+  if (total >= 100) return 5;
+  if (total >= 90) return 4;
+  if (total >= 70) return 3;
+  if (total >= 50) return 2;
+  if (total >= 20) return 1;
+  return 0;
+}
+
+function chooseReward(tier) {
+  const rewards = REWARD_POOLS[tier];
+  const noneProbability = Math.max(0, 100 - rewards.reduce((sum, reward) => sum + reward.probability, 0));
+  const randomValues = new Uint32Array(1);
+  crypto.getRandomValues(randomValues);
+  const roll = (randomValues[0] / 0x100000000) * 100;
+  let cursor = 0;
+  for (const reward of rewards) {
+    cursor += reward.probability;
+    if (roll < cursor) return reward;
+  }
+  return { key: null, name: null, rarity: null, probability: noneProbability, noReward: true };
+}
+
+async function processRewardDraws(env, accountId, month) {
+  const { start, end } = getVoteMonthBounds(month);
+  const countRow = await env.ACCOUNT_DB.prepare(
+    "SELECT COUNT(*) AS total FROM account_votes WHERE account_id = ? AND voted_at >= ? AND voted_at < ?"
+  ).bind(accountId, start, end).first();
+  const totalVotes = Number(countRow?.total || 0);
+  const drawCount = Math.floor(totalVotes / 2);
+
+  for (let drawNumber = 1; drawNumber <= drawCount; drawNumber++) {
+    const existing = await env.ACCOUNT_DB.prepare(
+      "SELECT id FROM vote_rewards WHERE account_id = ? AND month = ? AND draw_number = ?"
+    ).bind(accountId, month, drawNumber).first();
+    if (existing) continue;
+
+    const secondVote = await env.ACCOUNT_DB.prepare(
+      "SELECT id, voted_at FROM account_votes WHERE account_id = ? AND voted_at >= ? AND voted_at < ? ORDER BY voted_at ASC, id ASC LIMIT 1 OFFSET ?"
+    ).bind(accountId, start, end, drawNumber * 2 - 1).first();
+    if (!secondVote) continue;
+
+    const countAtDraw = await env.ACCOUNT_DB.prepare(
+      "SELECT COUNT(*) AS total FROM account_votes WHERE account_id = ? AND voted_at >= ? AND voted_at < ? AND (voted_at < ? OR (voted_at = ? AND id <= ?))"
+    ).bind(accountId, start, end, secondVote.voted_at, secondVote.voted_at, secondVote.id).first();
+    const tier = tierForVoteCount(Number(countAtDraw?.total || drawNumber * 2));
+    const reward = chooseReward(tier);
+    const id = crypto.randomUUID();
+
+    if (reward.noReward) {
+      await env.ACCOUNT_DB.prepare(
+        "INSERT OR IGNORE INTO vote_rewards (id, account_id, month, draw_number, tier, reward_key, reward_name, rarity, probability, status, created_at) VALUES (?, ?, ?, ?, ?, NULL, NULL, NULL, ?, 'no_reward', ?)"
+      ).bind(id, accountId, month, drawNumber, tier, reward.probability, now()).run();
+    } else {
+      await env.ACCOUNT_DB.prepare(
+        "INSERT OR IGNORE INTO vote_rewards (id, account_id, month, draw_number, tier, reward_key, reward_name, rarity, probability, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)"
+      ).bind(id, accountId, month, drawNumber, tier, reward.key, reward.name, reward.rarity, reward.probability, now()).run();
+    }
+  }
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -159,6 +280,7 @@ export default {
         await env.ACCOUNT_DB.prepare(
           "INSERT OR IGNORE INTO account_votes (account_id, source, voted_at, pseudo) VALUES (?, ?, ?, ?)"
         ).bind(account.id, source, timestamp, account.username).run();
+        await processRewardDraws(env, account.id, new Date(timestamp * 1000).toISOString().slice(0, 7));
 
         return json({
           ok: true,
@@ -203,6 +325,7 @@ export default {
         if (session.account_id !== account.id) return json({ ok: false, error: "Cette session de vote n'appartient pas à ton compte." }, 403, origin);
 
         if (session.status === "confirmed") {
+          await processRewardDraws(env, account.id, new Date(Number(session.voted_at || session.created_at) * 1000).toISOString().slice(0, 7));
           return json({ ok: true, status: "confirmed", pseudo: session.pseudo }, 200, origin);
         }
 
@@ -230,6 +353,7 @@ export default {
           await env.ACCOUNT_DB.prepare(
             "INSERT OR IGNORE INTO account_votes (account_id, source, voted_at, pseudo) VALUES (?, 'serveur-prive', ?, ?)"
           ).bind(account.id, votedAt, session.pseudo).run();
+          await processRewardDraws(env, account.id, new Date(votedAt * 1000).toISOString().slice(0, 7));
 
           await env.DB.batch([
             env.DB.prepare(
