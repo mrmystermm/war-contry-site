@@ -409,6 +409,52 @@ async function handle(request, env) {
       }
       return json({ ok: true, message: "Ton compte War Contry a été supprimé définitivement." }, 200, cors);
     }
+    if (route === "/skin-status" && request.method === "GET") {
+      const account = await authenticatedAccount(request, env);
+      if (!account) return json({ ok: false, error: "Session expirée. Reconnecte-toi." }, 401, cors);
+      if (!env.SUPABASE_URL || !env.SUPABASE_SECRET_KEY) return json({ ok: false, error: "Le stockage des skins n'est pas configuré." }, 503, cors);
+      const publicUrl = String(env.SUPABASE_URL).replace(/\\/+$/, "") + "/storage/v1/object/public/minecraft-skins/" + encodeURIComponent(account.id) + "/skin.png";
+      return json({ ok: true, skinUrl: publicUrl }, 200, cors);
+    }
+    if (route === "/skin-upload" && request.method === "POST") {
+      const account = await authenticatedAccount(request, env);
+      if (!account) return json({ ok: false, error: "Session expirée. Reconnecte-toi." }, 401, cors);
+      if (!env.SUPABASE_URL || !env.SUPABASE_SECRET_KEY) return json({ ok: false, error: "Le stockage des skins n'est pas configuré." }, 503, cors);
+      if (!await rateLimit(env, "skin-upload:" + account.id, 10, 3600)) return json({ ok: false, error: "Tu as atteint la limite d'envoi. Réessaie dans une heure." }, 429, cors);
+      const contentLength = Number(request.headers.get("Content-Length") || 0);
+      if (contentLength > 1024 * 1024 + 16000) return json({ ok: false, error: "Le fichier est trop volumineux (1 Mo maximum)." }, 413, cors);
+      const form = await request.formData();
+      const file = form.get("skin");
+      if (!file || typeof file.arrayBuffer !== "function") return json({ ok: false, error: "Sélectionne un fichier PNG." }, 400, cors);
+      if (file.size < 100 || file.size > 1024 * 1024) return json({ ok: false, error: "Le skin doit peser entre 100 octets et 1 Mo." }, 400, cors);
+      if (file.type !== "image/png" && !String(file.name || "").toLowerCase().endsWith(".png")) return json({ ok: false, error: "Seuls les fichiers PNG sont acceptés." }, 400, cors);
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const pngSignature = [137, 80, 78, 71, 13, 10, 26, 10];
+      if (!pngSignature.every((value, index) => bytes[index] === value)) return json({ ok: false, error: "Le fichier sélectionné n'est pas un PNG valide." }, 400, cors);
+      const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+      const width = view.getUint32(16);
+      const height = view.getUint32(20);
+      if (width !== 64 || height !== 64) return json({ ok: false, error: "Le skin doit avoir une taille de 64 × 64 pixels." }, 400, cors);
+      const base = String(env.SUPABASE_URL).replace(/\\/+$/, "");
+      const objectPath = encodeURIComponent(account.id) + "/skin.png";
+      const upload = await fetch(base + "/storage/v1/object/minecraft-skins/" + objectPath, {
+        method: "PUT",
+        headers: {
+          "Authorization": "Bearer " + env.SUPABASE_SECRET_KEY,
+          "apikey": env.SUPABASE_SECRET_KEY,
+          "Content-Type": "image/png",
+          "x-upsert": "true",
+          "Cache-Control": "3600"
+        },
+        body: bytes
+      });
+      if (!upload.ok) {
+        console.error("Supabase skin upload failed", upload.status, (await upload.text()).slice(0, 500));
+        return json({ ok: false, error: "Le stockage Supabase a refusé le fichier. Réessaie plus tard." }, 502, cors);
+      }
+      const skinUrl = base + "/storage/v1/object/public/minecraft-skins/" + objectPath + "?v=" + now();
+      return json({ ok: true, skinUrl, message: "Ton skin a été enregistré sur ton compte." }, 200, cors);
+    }
     if (route === "/minecraft-link-create" && request.method === "POST") {
       const suppliedSecret = request.headers.get("X-Minecraft-Link-Secret") || "";
       if (!env.MINECRAFT_LINK_SECRET || String(env.MINECRAFT_LINK_SECRET).length < 32 ||
